@@ -1,27 +1,28 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import ormConfig from 'ormconfig';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { getEnvPath } from './common/utils';
-import { ConfigModule } from '@nestjs/config';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { env } from './common/config/env';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import { LoggerMiddleware } from './common/middlewares/logger.middleware';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { HealthModule } from './modules/health/health.module';
-import { UserModule } from './modules/user/user.module';
-import { MigrationModule } from './modules/migration/migration.module';
-import { AuthModule } from './modules/auth/auth.module';
-import { GithubModule } from './common/helpers/github/github.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { CloudinaryModule } from './common/helpers/cloudinary/cloudinary.module';
-import { LiquidityModule } from './modules/liquidity/liquidity.module';
-import { EarnModule } from './modules/earn/earn.module';
 import { ContractModule } from './common/helpers/contract/contract.module';
-import { LaunchboxModule } from './modules/launchbox/launchbox.module';
 import { FarcasterModule } from './common/helpers/farcaster/farcaster.module';
-import ormConfig from 'ormconfig';
+import { GithubModule } from './common/helpers/github/github.module';
+import { LoggerMiddleware } from './common/middlewares/logger.middleware';
+import { getEnvPath } from './common/utils';
+import { AuthModule } from './modules/auth/auth.module';
+import { EarnModule } from './modules/earn/earn.module';
+import { HealthModule } from './modules/health/health.module';
+import { LaunchboxModule } from './modules/launchbox/launchbox.module';
+import { LiquidityModule } from './modules/liquidity/liquidity.module';
+import { MigrationModule } from './modules/migration/migration.module';
+import { UserModule } from './modules/user/user.module';
 
 const envPath = getEnvPath();
 @Module({
@@ -39,6 +40,7 @@ const envPath = getEnvPath();
         },
       ],
     }),
+    ScheduleModule.forRoot(),
     HealthModule,
     UserModule,
     MigrationModule,

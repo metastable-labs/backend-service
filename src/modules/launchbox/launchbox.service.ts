@@ -1,10 +1,11 @@
 import { HttpService } from '@nestjs/axios';
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 
+import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
-import { In, MongoRepository } from 'typeorm';
+import { LessThan, MongoRepository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import validator from 'validator';
 import { env } from '../../common/config/env';
@@ -25,13 +26,14 @@ import {
   UpdateDto
 } from './dtos/launchbox.dto';
 import {
+  IncentiveAction,
   IncentiveChannel,
   LaunchboxToken,
   LaunchboxTokenHolder,
   LaunchboxTokenLeaderboard,
   LaunchboxTokenTransaction,
   LeaderboardParticipant,
-  TokenConfiguredAction,
+  TokenConfiguredAction
 } from './entities/launchbox.entity';
 import { ChannelSlug, FarcasterActions, NFTActions } from './enums/leaderboard.enum';
 import { Chain, IIncentiveChannel, ILaunchboxTokenLeaderboard } from './interfaces/launchbox.interface';
@@ -63,7 +65,10 @@ export class LaunchboxService {
 
 
     @InjectRepository(TokenConfiguredAction)
-    private readonly tokenConfiguredActionRepository: MongoRepository<TokenConfiguredAction>
+    private readonly tokenConfiguredActionRepository: MongoRepository<TokenConfiguredAction>,
+
+    @InjectRepository(IncentiveAction)
+    private readonly incentiveActionRepository: MongoRepository<IncentiveAction>
   ) { }
 
 
@@ -698,11 +703,6 @@ export class LaunchboxService {
   }
 
 
-
-  private async calculateFarcasterActionPoints() { }
-
-  private async calculateNFTActionPoints() { }
-
   async getTokenLeaderBoard(id: string): Promise<IResponse | ServiceError> {
     try {
       const token = await this.launchboxTokenRepository.findOne({
@@ -843,7 +843,6 @@ export class LaunchboxService {
     }
   }
 
-
   async earnPoints(token_id: string, user: PlayDTO): Promise<IResponse | ServiceError> {
     try {
       const lbToken = await this.launchboxTokenRepository.findOne({
@@ -878,12 +877,29 @@ export class LaunchboxService {
       if (!rank) {
         const { associated_address, farcaster_username } = user
         rank = new LeaderboardParticipant(leaderboard.id, farcaster_username, associated_address)
-        await this.leaderboardParticipantRepository.save(rank)
+
+        if (!leaderboard.participants) {
+          leaderboard.participants = [rank]
+        } else {
+          leaderboard.participants.push(rank)
+        }
+        await this.leaderboardRepository.updateOne({ id: leaderboard.id }, {
+          $set: {
+            participants: [...leaderboard.participants]
+          }
+        })
+      } else {
+        return successResponse({
+          status: true,
+          statusCode: 409,
+          message: 'success',
+          data: { rank },
+        })
       }
 
       return successResponse({
         status: true,
-        message: 'Rank fetched successfully',
+        message: 'success',
         data: { rank },
       })
     } catch (error) {
@@ -905,38 +921,42 @@ export class LaunchboxService {
 
   async getRank(address: string, token_id: string): Promise<IResponse | ServiceError> {
     try {
-      const participant = await this.leaderboardParticipantRepository.findOne({
-        where: {
-          associated_address: address,
-          leaderboard_id: token_id
-        }
-      });
-
-      if (!participant) {
-        throw new ServiceError('Participant not found', HttpStatus.NOT_FOUND);
-      }
-
       const leaderboard = await this.leaderboardRepository.findOne({
-        where: {
-          token_id
-        },
-        relations: ['participants']
+        where: { token_id },
+        relations: ['participants', 'incentives'],
       });
 
       if (!leaderboard) {
         throw new ServiceError('Leaderboard not found', HttpStatus.NOT_FOUND);
       }
 
-      const completedActionIds = participant.completed_actions;
-      const completedActions = await this.tokenConfiguredActionRepository.findBy({ id: In(completedActionIds) });
-      const participantPoints = completedActions.reduce((acc, action) => acc + action.points, 0);
+      const participant = leaderboard.participants.find((p) => p.associated_address === address);
 
+      if (!participant) {
+        throw new ServiceError('Participant not found', HttpStatus.NOT_FOUND);
+      }
+
+      if (!participant.completed_actions) {
+        return successResponse({
+          status: true,
+          message: 'Rank fetched successfully',
+          data: {
+            total_points: 0,
+            rank: leaderboard.participants.length,
+          },
+        });
+      }
+      const participantPoints = participant.completed_actions.reduce((acc, actionId) => {
+        const action = leaderboard.incentives.find((a) => a.action_id === actionId);
+        return acc + (action ? action.points : 0);
+      }, 0);
 
       const sortedParticipants = await Promise.all(
         leaderboard.participants.map(async (p) => {
-          const actionIds = p.completed_actions;
-          const actions = await this.tokenConfiguredActionRepository.findBy({ id: In(actionIds) });
-          const points = actions.reduce((acc, action) => acc + action.points, 0);
+          const points = p.completed_actions.reduce((acc, actionId) => {
+            const action = leaderboard.incentives.find((a) => a.action_id === actionId);
+            return acc + (action ? action.points : 0);
+          }, 0);
           return { ...p, points };
         })
       );
@@ -950,14 +970,11 @@ export class LaunchboxService {
         message: 'Rank fetched successfully',
         data: {
           total_points: participantPoints,
-          rank: rank
+          rank: rank,
         },
       });
     } catch (error) {
-      this.logger.error(
-        'An error occurred while fetching the rank.',
-        error.stack,
-      );
+      this.logger.error('An error occurred while fetching the rank.', error.stack);
 
       if (error instanceof ServiceError) {
         return error.toErrorResponse();
@@ -974,51 +991,64 @@ export class LaunchboxService {
   async getAllRanking(token_id: string, paginate: RankingPaginateDto): Promise<IResponse | ServiceError> {
     try {
       const leaderboard = await this.leaderboardRepository.findOne({
-        where: {
-          token_id
-        },
-        relations: ['participants']
+        where: { token_id },
+        relations: ['participants', 'incentives'],
       });
 
       if (!leaderboard) {
         throw new ServiceError('Leaderboard not found', HttpStatus.NOT_FOUND);
       }
 
+      if (!leaderboard.participants) {
+        return successResponse({
+          status: true,
+          message: "success",
+          data: {
+            ranking: [],
+            total: 0,
+          },
+        });
+      }
+
       const sortedParticipants = await Promise.all(
         leaderboard.participants.map(async (p) => {
           const actionIds = p.completed_actions;
-          const actions = await this.tokenConfiguredActionRepository.findByIds(actionIds);
-          const points = actions.reduce((acc, action) => acc + action.points, 0);
-          return { ...p, points };
+          if (actionIds) {
+            const points = actionIds.reduce((acc, actionId) => {
+              const action = leaderboard.incentives.find((a) => a.action_id === actionId);
+              return acc + (action ? action.points : 0);
+            }, 0);
+            return { ...p, points };
+          }
+
+          return { ...p, points: 0 };
         })
       );
 
-
-      const ranking = sortedParticipants.map((p, i) => {
-        return {
+      const ranking = sortedParticipants
+        .map((p) => ({
           points: p.points,
           address: p.associated_address,
           created_at: p.created_at,
-          farcaster_username: p.farcaster_username
-        }
-      }).sort((a, b) => b.points - a.points);
+          farcaster_username: p.farcaster_username,
+        }))
+        .sort((a, b) => b.points - a.points);
 
-
-      const paginatedParticipants = ranking.slice((paginate.page - 1) * paginate.limit, paginate.page * paginate.limit);
+      const paginatedParticipants = ranking.slice(
+        (paginate.page - 1) * paginate.limit,
+        paginate.page * paginate.limit
+      );
 
       return successResponse({
         status: true,
         message: 'Ranking fetched successfully',
         data: {
           ranking: paginatedParticipants,
-          total: sortedParticipants.length
+          total: sortedParticipants.length,
         },
       });
     } catch (error) {
-      this.logger.error(
-        'An error occurred while fetching the ranking.',
-        error.stack,
-      );
+      this.logger.error('An error occurred while fetching the ranking.', error.stack);
 
       if (error instanceof ServiceError) {
         return error.toErrorResponse();
@@ -1026,7 +1056,7 @@ export class LaunchboxService {
 
       throw new ServiceError(
         'An error occurred while fetching the ranking. Please try again later.',
-        HttpStatus.INTERNAL_SERVER_ERROR,
+        HttpStatus.INTERNAL_SERVER_ERROR
       ).toErrorResponse();
     }
   }
@@ -1080,6 +1110,7 @@ export class LaunchboxService {
       ).toErrorResponse();
     }
   }
+
 
   async removeIncentiveAction(token_id: string, action_id: string): Promise<IResponse | ServiceError> {
     try {
@@ -1181,6 +1212,60 @@ export class LaunchboxService {
     });
 
     await Promise.all(activityPromises);
+  }
+
+
+
+
+  @Cron('45 * * * * *')
+  async calculateRanks() {
+    try {
+      const fourMinutesAgo = new Date(Date.now() - 4 * 60 * 1000);
+
+      const hotLeaderboards = await this.leaderboardRepository.find({
+        where: {
+          updated_at: LessThan(fourMinutesAgo),
+        },
+      });
+
+      this.logger.debug('Calculate Rewards');
+
+      const channels = await this.getSystemChannels();
+
+      const configuredChannels = hotLeaderboards.map((ldb) => {
+        const configuredChannels = ldb.incentives.map((cfg) => {
+          const channel = channels.find(ch => ch.actions.some(ac => ac.id === cfg.action_id));
+          if (channel) {
+            const action = channel.actions.find(ac => ac.id === cfg.action_id);
+            if (action) {
+              // FIX: do this at entity level
+              const { _id, ...clean } = channel
+              return {
+                ...clean,
+                actions: [action]
+              };
+            }
+          }
+          return null;
+        }).filter(i => i !== null) as unknown as IIncentiveChannel[];
+
+        return {
+          leaderboard: ldb.id,
+          channels: configuredChannels
+        }
+      })
+
+
+
+
+      for (const leaderboard of hotLeaderboards) {
+
+      }
+
+
+    } catch (error) {
+      this.logger.error('Error calculating ranks', error.stack);
+    }
   }
 
 }

@@ -159,10 +159,12 @@ export class PaginateDto {
 export class RankingPaginateDto {
   @IsNotEmpty()
   @IsNumber()
+  @Transform(({ value }) => (parseInt(value.trim())))
   limit: number;
 
   @IsNotEmpty()
   @IsNumber()
+  @Transform(({ value }) => (parseInt(value.trim())))
   page: number;
 }
 

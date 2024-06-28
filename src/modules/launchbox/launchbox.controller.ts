@@ -271,6 +271,16 @@ export class LaunchboxController {
 
   @ApiResponse({
     status: HttpStatus.OK,
+    description: 'Get Active incentive channels',
+  })
+  @Post("/tokens/:id/incentives")
+  async getActiveIncentives(@Param('id') id: string, @Body() action: ActionDTO) {
+    return this.launchboxService.getChannelsByAddress
+  }
+
+
+  @ApiResponse({
+    status: HttpStatus.OK,
     description: 'Participate in activities to earn points',
   })
   @Post("/tokens/:id/earn")
