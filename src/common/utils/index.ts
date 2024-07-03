@@ -5,7 +5,7 @@ import {
   PeriodType,
 } from '../helpers/analytic/interfaces/analytic.interface';
 import { ServiceError } from '../errors/service.error';
-import { HttpStatus } from '@nestjs/common';
+import { HttpStatus, ValidationError } from '@nestjs/common';
 import { Period } from '../helpers/analytic/enums/analytic.enum';
 
 export const getEnvPath = () => {
@@ -83,4 +83,18 @@ export const getPeriod = (periodKey: PeriodKey) => {
   };
 
   return periodMap[periodKey];
+};
+
+export const flattenValidationErrors = (
+  errors: ValidationError[],
+): string[] => {
+  return errors.reduce((acc, error) => {
+    if (error.constraints) {
+      return [...acc, ...Object.values(error.constraints)];
+    }
+    if (error.children) {
+      return [...acc, ...flattenValidationErrors(error.children)];
+    }
+    return acc;
+  }, [] as string[]);
 };
