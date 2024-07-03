@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEthereumAddress,
   IsNotEmpty,
@@ -133,6 +134,10 @@ export class UpdateDto {
     require_protocol: true,
   })
   twitter_url: string;
+
+  @IsOptional()
+  @IsBoolean()
+  create_token_page: boolean;
 }
 
 export class ChainDto {
@@ -201,7 +206,7 @@ class NavigationDto {
   })
   buy_url: string;
 
-  logo_url: string;
+  logo_url: string | undefined;
 }
 
 class HeroSectionDto {
@@ -213,7 +218,7 @@ class HeroSectionDto {
   @IsString()
   description: string;
 
-  image_url: string;
+  image_url: string | undefined;
 }
 
 class TokenomicsDto {
@@ -272,7 +277,7 @@ class FooterDto {
 }
 
 export class WebsiteBuilderDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsObject()
   @ValidateNested()
   @Type(() => AppearanceDto)
@@ -281,7 +286,7 @@ export class WebsiteBuilderDto {
   )
   appearance: AppearanceDto;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsObject()
   @ValidateNested()
   @Type(() => NavigationDto)
@@ -290,7 +295,7 @@ export class WebsiteBuilderDto {
   )
   navigation: NavigationDto;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsObject()
   @ValidateNested()
   @Type(() => HeroSectionDto)
@@ -308,7 +313,7 @@ export class WebsiteBuilderDto {
   )
   tokenomics: TokenomicsDto;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsObject()
   @ValidateNested()
   @Type(() => FaqDto)
@@ -317,7 +322,7 @@ export class WebsiteBuilderDto {
   )
   faq: FaqDto;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsObject()
   @ValidateNested()
   @Type(() => FooterDto)

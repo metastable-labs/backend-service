@@ -272,13 +272,14 @@ export class LaunchboxController {
     ]),
   )
   @HttpCode(HttpStatus.OK)
-  @Post('/tokens/:id/website-builder')
+  @Patch('/tokens/:id/website-builder')
   async updateWebsiteBuilder(
     @Param('id') id: string,
     @Body() body: Record<string, string>,
     @UploadedFiles(
       new ParseFilesPipe(
         new ParseFilePipe({
+          fileIsRequired: false,
           validators: [
             new MaxFileSizeValidator({
               maxSize: env.file.maxSize * 1000 * 1024,
