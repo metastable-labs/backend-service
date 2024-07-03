@@ -28,3 +28,23 @@ export class CustomUploadFileTypeValidator extends FileValidator {
     )}`;
   }
 }
+
+import { ParseFilePipe, PipeTransform } from '@nestjs/common';
+
+export class ParseFilesPipe implements PipeTransform<Express.Multer.File[]> {
+  constructor(private readonly pipe: ParseFilePipe) {}
+
+  async transform(
+    files: Express.Multer.File[] | { [key: string]: Express.Multer.File },
+  ): Promise<Express.Multer.File[] | { [key: string]: Express.Multer.File }> {
+    if (Array.isArray(files)) {
+      await Promise.all(files.map((file) => this.pipe.transform(file)));
+      return files;
+    } else {
+      await Promise.all(
+        Object.values(files).map((file) => this.pipe.transform(file)),
+      );
+      return files;
+    }
+  }
+}
