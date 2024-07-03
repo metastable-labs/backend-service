@@ -1,8 +1,10 @@
 import {
+  BadRequestException,
   Body,
   ClassSerializerInterceptor,
   Controller,
   Get,
+  HttpCode,
   HttpStatus,
   MaxFileSizeValidator,
   Param,
@@ -11,21 +13,32 @@ import {
   Post,
   Query,
   UploadedFile,
+  UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
 import { LaunchboxService } from './launchbox.service';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { CustomUploadFileTypeValidator } from '../../common/validators/file.validator';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
+import {
+  CustomUploadFileTypeValidator,
+  ParseFilesPipe,
+} from '../../common/validators/file.validator';
 import { env } from '../../common/config/env';
 import {
   CreateDto,
   PaginateDto,
   PriceAnalyticQueryDto,
   UpdateDto,
+  WebsiteBuilderDto,
 } from './dtos/launchbox.dto';
 import { FileMimes } from '../../common/enums/index.enum';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ErrorResponse } from '../../common/responses';
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
+import { flattenValidationErrors } from 'src/common/utils';
 
 @ApiTags('Launchbox')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -235,6 +248,82 @@ export class LaunchboxController {
   @Get('/tokens/:id/casts')
   async getTokenCasts(@Param('id') id: string, @Query() query: PaginateDto) {
     return this.launchboxService.getTokenCasts(id, parseInt(query.take));
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Token website builder created successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Token not found',
+    type: ErrorResponse,
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description:
+      'An error occurred while creating website builder. Please try again later.',
+    type: ErrorResponse,
+  })
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'logo', maxCount: 1 },
+      { name: 'hero', maxCount: 1 },
+    ]),
+  )
+  @HttpCode(HttpStatus.OK)
+  @Post('/tokens/:id/website-builder')
+  async updateWebsiteBuilder(
+    @Param('id') id: string,
+    @Body() body: Record<string, string>,
+    @UploadedFiles(
+      new ParseFilesPipe(
+        new ParseFilePipe({
+          validators: [
+            new MaxFileSizeValidator({
+              maxSize: env.file.maxSize * 1000 * 1024,
+            }),
+            new CustomUploadFileTypeValidator({
+              fileType: [
+                FileMimes.PNG,
+                FileMimes.JPEG,
+                FileMimes.JPG,
+                FileMimes.SVG,
+              ],
+            }),
+          ],
+        }),
+      ),
+    )
+    files: {
+      logo: Express.Multer.File[];
+      hero: Express.Multer.File[];
+    },
+  ) {
+    const parsedFormData = Object.entries(body).reduce(
+      (acc, [key, value]) => {
+        try {
+          acc[key] = JSON.parse(value);
+        } catch {
+          acc[key] = value;
+        }
+        return acc;
+      },
+      {} as Record<string, any>,
+    );
+
+    const dto = plainToInstance(WebsiteBuilderDto, {
+      ...parsedFormData,
+    });
+
+    const validationErrors = validateSync(dto);
+
+    if (validationErrors.length > 0) {
+      const flatErrors = flattenValidationErrors(validationErrors);
+      throw new BadRequestException(flatErrors);
+    }
+
+    return this.launchboxService.updateWebsiteBuilder(id, dto, files);
   }
 
   @ApiResponse({

@@ -4,6 +4,7 @@ import {
   IsEthereumAddress,
   IsNotEmpty,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   IsUrl,
@@ -98,6 +99,18 @@ export class CreateDto {
   })
   website_url: string;
 
+  @IsOptional()
+  @IsUrl({
+    require_protocol: true,
+  })
+  telegram_url: string;
+
+  @IsOptional()
+  @IsUrl({
+    require_protocol: true,
+  })
+  twitter_url: string;
+
   @IsNotEmpty()
   @IsString()
   chain: string;
@@ -108,6 +121,18 @@ export class UpdateDto {
   @Type(() => SocialDto)
   @ValidateNested()
   socials: Record<string, any>;
+
+  @IsOptional()
+  @IsUrl({
+    require_protocol: true,
+  })
+  telegram_url: string;
+
+  @IsOptional()
+  @IsUrl({
+    require_protocol: true,
+  })
+  twitter_url: string;
 }
 
 export class ChainDto {
@@ -157,4 +182,147 @@ export class PriceAnalyticQueryDto {
   @IsNotEmpty()
   @IsString()
   period: PeriodKey;
+}
+
+class AppearanceDto {
+  @IsNotEmpty()
+  @IsString()
+  primary_color: string;
+
+  @IsNotEmpty()
+  @IsString()
+  secondary_color: string;
+}
+
+class NavigationDto {
+  @IsNotEmpty()
+  @IsUrl({
+    require_protocol: true,
+  })
+  buy_url: string;
+
+  logo_url: string;
+}
+
+class HeroSectionDto {
+  @IsNotEmpty()
+  @IsString()
+  title: string;
+
+  @IsNotEmpty()
+  @IsString()
+  description: string;
+
+  image_url: string;
+}
+
+class TokenomicsDto {
+  [key: string]: string;
+}
+
+class FaqQuestionDto {
+  @IsNotEmpty()
+  @IsString()
+  title: string;
+
+  @IsNotEmpty()
+  @IsString()
+  answer: string;
+}
+
+class FaqDto {
+  @IsNotEmpty()
+  @IsString()
+  title: string;
+
+  @IsNotEmpty()
+  @IsString()
+  description: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FaqQuestionDto)
+  questions: FaqQuestionDto[];
+}
+
+class FooterDto {
+  @IsNotEmpty()
+  @IsUrl({
+    require_protocol: true,
+  })
+  twitter_url: string;
+
+  @IsNotEmpty()
+  @IsUrl({
+    require_protocol: true,
+  })
+  farcaster_url: string;
+
+  @IsNotEmpty()
+  @IsUrl({
+    require_protocol: true,
+  })
+  telegram_url: string;
+
+  @IsNotEmpty()
+  @IsUrl({
+    require_protocol: true,
+  })
+  chain_explorer_url: string;
+}
+
+export class WebsiteBuilderDto {
+  @IsNotEmpty()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => AppearanceDto)
+  @Transform(({ value }) =>
+    typeof value === 'string' ? JSON.parse(value) : value,
+  )
+  appearance: AppearanceDto;
+
+  @IsNotEmpty()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => NavigationDto)
+  @Transform(({ value }) =>
+    typeof value === 'string' ? JSON.parse(value) : value,
+  )
+  navigation: NavigationDto;
+
+  @IsNotEmpty()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => HeroSectionDto)
+  @Transform(({ value }) =>
+    typeof value === 'string' ? JSON.parse(value) : value,
+  )
+  hero_section: HeroSectionDto;
+
+  @IsNotEmpty()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => TokenomicsDto)
+  @Transform(({ value }) =>
+    typeof value === 'string' ? JSON.parse(value) : value,
+  )
+  tokenomics: TokenomicsDto;
+
+  @IsNotEmpty()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => FaqDto)
+  @Transform(({ value }) =>
+    typeof value === 'string' ? JSON.parse(value) : value,
+  )
+  faq: FaqDto;
+
+  @IsNotEmpty()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => FooterDto)
+  @Transform(({ value }) =>
+    typeof value === 'string' ? JSON.parse(value) : value,
+  )
+  footer: FooterDto;
 }
