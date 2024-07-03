@@ -47,7 +47,6 @@ export class LaunchboxUser {
 
   @UpdateDateColumn()
   updated_at: Date;
-
 }
 
 @Entity({

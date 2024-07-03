@@ -3,7 +3,6 @@ import {
   ExecutionContext,
   HttpStatus,
   Injectable,
-  Logger,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { ServiceError } from '../errors/service.error';
