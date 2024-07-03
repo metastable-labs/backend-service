@@ -17,6 +17,7 @@ import {
   PaginateDto,
   SocialDto,
   UpdateDto,
+  WebsiteBuilderDto,
 } from './dtos/launchbox.dto';
 import { ServiceError } from '../../common/errors/service.error';
 import { CloudinaryService } from '../../common/helpers/cloudinary/cloudinary.service';
@@ -714,18 +715,87 @@ export class LaunchboxService {
     }
   }
 
-  private async getEthPriceInUsd(): Promise<number> {
+  async updateWebsiteBuilder(
+    id: string,
+    body: WebsiteBuilderDto,
+    files: {
+      logo: Express.Multer.File[];
+      hero: Express.Multer.File[];
+    },
+  ): Promise<IResponse | ServiceError> {
     try {
-      const ethPrice = await this.sharedService.getEthPriceInUsd();
+      const token = await this.launchboxTokenRepository.findOne({
+        where: {
+          id,
+        },
+      });
 
-      return ethPrice;
+      if (!token) {
+        throw new ServiceError('Token not found', HttpStatus.NOT_FOUND);
+      } else if (!token.create_token_page) {
+        throw new ServiceError(
+          'Create webiste page is not active on this token',
+          HttpStatus.BAD_REQUEST,
+        );
+      } else if (token.website_builder) {
+        throw new ServiceError(
+          'Website builder created already, use update',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const logoUrl = await this.cloudinaryService.upload(
+        files.logo[0],
+        'launchboxes',
+      );
+      const heroUrl = await this.cloudinaryService.upload(
+        files.hero[0],
+        'launchboxes',
+      );
+
+      if (!logoUrl || !heroUrl) {
+        throw new ServiceError('Upload failed', HttpStatus.BAD_REQUEST);
+      }
+
+      const formattedBody: WebsiteBuilderDto = {
+        ...body,
+        navigation: {
+          ...body.navigation,
+          logo_url: logoUrl,
+        },
+        hero_section: {
+          ...body.hero_section,
+          image_url: heroUrl,
+        },
+      };
+
+      await this.launchboxTokenRepository.updateOne(
+        {
+          id,
+        },
+        { $set: { website_builder: formattedBody } },
+      );
+
+      return successResponse({
+        status: true,
+        message: 'Token website builder created successfully',
+      });
     } catch (error) {
-      this.logger.error('An error occurred while fetching the price.', error);
+      console.log(error);
+
+      this.logger.error(
+        'An error occurred while creating website builder',
+        error.stack,
+      );
+
+      if (error instanceof ServiceError) {
+        return error.toErrorResponse();
+      }
 
       throw new ServiceError(
-        'An error occurred while fetching the price. Please try again later.',
+        'An error occurred while creating website builder. Please try again later.',
         HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      ).toErrorResponse();
     }
   }
 
@@ -848,6 +918,21 @@ export class LaunchboxService {
         );
       },
     );
+  }
+
+  private async getEthPriceInUsd(): Promise<number> {
+    try {
+      const ethPrice = await this.sharedService.getEthPriceInUsd();
+
+      return ethPrice;
+    } catch (error) {
+      this.logger.error('An error occurred while fetching the price.', error);
+
+      throw new ServiceError(
+        'An error occurred while fetching the price. Please try again later.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   private getContract(contractAddress: string, abi: string[]): ethers.Contract {
