@@ -26,7 +26,11 @@ import { successResponse } from '../../common/responses/success.helper';
 import { Chain } from './interfaces/launchbox.interface';
 import { FarcasterService } from '../../common/helpers/farcaster/farcaster.service';
 import { ContractService } from '../../common/helpers/contract/contract.service';
-import { Currency, TransactionType } from './enums/launchbox.enum';
+import {
+  Currency,
+  FileUploadFolder,
+  TransactionType,
+} from './enums/launchbox.enum';
 import { SharedService } from '../../common/helpers/shared/shared.service';
 import { AnalyticService } from '../../common/helpers/analytic/analytic.service';
 import { PeriodKey } from '../../common/helpers/analytic/interfaces/analytic.interface';
@@ -110,7 +114,10 @@ export class LaunchboxService {
         throw new ServiceError('Token already exists', HttpStatus.BAD_REQUEST);
       }
 
-      const logoUrl = await this.cloudinaryService.upload(file, 'launchboxes');
+      const logoUrl = await this.cloudinaryService.upload(
+        file,
+        FileUploadFolder.Launchbox,
+      );
 
       if (!logoUrl) {
         throw new ServiceError('Upload failed', HttpStatus.BAD_REQUEST);
@@ -177,6 +184,9 @@ export class LaunchboxService {
             socials: {
               warpcast: { channel: body.socials },
             },
+            telegram_url: body.telegram_url,
+            twitter_url: body.twitter_url,
+            create_token_page: body.create_token_page,
           },
         },
       );
@@ -737,37 +747,30 @@ export class LaunchboxService {
           'Create webiste page is not active on this token',
           HttpStatus.BAD_REQUEST,
         );
-      } else if (token.website_builder) {
-        throw new ServiceError(
-          'Website builder created already, use update',
-          HttpStatus.BAD_REQUEST,
-        );
       }
 
-      const logoUrl = await this.cloudinaryService.upload(
-        files.logo[0],
-        'launchboxes',
-      );
-      const heroUrl = await this.cloudinaryService.upload(
-        files.hero[0],
-        'launchboxes',
-      );
-
-      if (!logoUrl || !heroUrl) {
-        throw new ServiceError('Upload failed', HttpStatus.BAD_REQUEST);
-      }
+      const { logoUrl, heroUrl } = await this.handleFileUploads(files, {
+        logoUrl: token.website_builder?.navigation?.logo_url,
+        heroUrl: token.website_builder?.hero_section?.image_url,
+      });
 
       const formattedBody: WebsiteBuilderDto = {
         ...body,
-        navigation: {
-          ...body.navigation,
-          logo_url: logoUrl,
-        },
-        hero_section: {
-          ...body.hero_section,
-          image_url: heroUrl,
-        },
       };
+
+      if (body.navigation || files.logo) {
+        formattedBody.navigation = {
+          ...body.navigation,
+          logo_url: logoUrl || body.navigation.logo_url,
+        };
+      }
+
+      if (body.hero_section || files.hero) {
+        formattedBody.hero_section = {
+          ...body.hero_section,
+          image_url: heroUrl || body.hero_section.image_url,
+        };
+      }
 
       await this.launchboxTokenRepository.updateOne(
         {
@@ -1186,5 +1189,51 @@ export class LaunchboxService {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  private async handleFileUploads(
+    files: {
+      logo: Express.Multer.File[];
+      hero: Express.Multer.File[];
+    },
+    existingUrls: { logoUrl?: string; heroUrl?: string },
+  ): Promise<{ logoUrl?: string; heroUrl?: string }> {
+    const result: { logoUrl?: string; heroUrl?: string } = {};
+
+    if (files.logo && files.logo.length > 0) {
+      result.logoUrl = await this.uploadOrUpdateFile(
+        files.logo[0],
+        existingUrls.logoUrl,
+      );
+    }
+
+    if (files.hero && files.hero.length > 0) {
+      result.heroUrl = await this.uploadOrUpdateFile(
+        files.hero[0],
+        existingUrls.heroUrl,
+      );
+    }
+
+    return result;
+  }
+
+  private async uploadOrUpdateFile(
+    file: Express.Multer.File,
+    currentImageUrl?: string,
+  ) {
+    if (!file) {
+      return undefined;
+    }
+
+    if (currentImageUrl) {
+      const publicId = currentImageUrl.split('/').pop();
+      const publicIdWithoutExtension = publicId?.split('.')[0];
+
+      await this.cloudinaryService.delete(
+        `${FileUploadFolder.Launchbox}/${publicIdWithoutExtension?.trim()}`,
+      );
+    }
+
+    return this.cloudinaryService.upload(file, FileUploadFolder.Launchbox);
   }
 }
