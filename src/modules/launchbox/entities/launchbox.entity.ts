@@ -16,6 +16,41 @@ import {
 import { TransactionType } from '../enums/launchbox.enum';
 
 @Entity({
+  name: 'launchbox_users',
+})
+export class LaunchboxUser {
+  @Exclude()
+  @ObjectIdColumn({ select: false })
+  _id: ObjectId;
+
+  @PrimaryColumn()
+  id: string;
+
+  @Exclude()
+  @Column()
+  reference: string;
+
+  @Column()
+  auth_id: string;
+
+  @Column()
+  auth_type: string;
+
+  @Column()
+  wallet_address: string;
+
+  @Column()
+  is_active: boolean;
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
+
+}
+
+@Entity({
   name: 'launchbox_tokens',
 })
 export class LaunchboxToken {
