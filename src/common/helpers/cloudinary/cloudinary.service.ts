@@ -32,13 +32,23 @@ export class CloudinaryService {
     });
   }
 
-  public async convertToSvg(file: Express.Multer.File): Promise<string> {
-    const url = await this.upload(file);
+  public async delete(publicId: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      v2.uploader.destroy(
+        publicId,
+        { resource_type: 'image' },
+        (error, result) => {
+          if (error) {
+            reject(error);
+          }
 
-    if (url.endsWith('.svg')) {
-      return url;
-    }
-
-    return v2.image(url, { format: 'svg' });
+          if (result && result.result === 'ok') {
+            resolve();
+          } else {
+            reject('Delete failed');
+          }
+        },
+      );
+    });
   }
 }
