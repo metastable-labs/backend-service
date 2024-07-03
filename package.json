@@ -34,6 +34,7 @@
     "@nestjs/throttler": "^5.1.2",
     "@nestjs/typeorm": "^10.0.2",
     "@octokit/core": "5.1.0",
+    "@privy-io/server-auth": "^1.8.0",
     "axios": "^1.7.2",
     "channels-lib": "^2.0.3",
     "class-transformer": "^0.5.1",

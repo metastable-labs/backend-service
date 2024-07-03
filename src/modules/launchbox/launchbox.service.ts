@@ -6,10 +6,13 @@ import validator from 'validator';
 import { MongoRepository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ethers } from 'ethers';
+import { JwtService } from '@nestjs/jwt';
+import { User } from '@privy-io/server-auth';
 import {
   LaunchboxToken,
   LaunchboxTokenHolder,
   LaunchboxTokenTransaction,
+  LaunchboxUser,
 } from './entities/launchbox.entity';
 import {
   ChainDto,
@@ -35,6 +38,7 @@ import { SharedService } from '../../common/helpers/shared/shared.service';
 import { AnalyticService } from '../../common/helpers/analytic/analytic.service';
 import { PeriodKey } from '../../common/helpers/analytic/interfaces/analytic.interface';
 import { getDateRangeFromKey } from '../../common/utils';
+import { PrivyService } from '../../common/helpers/privy/privy.service';
 
 @Injectable()
 export class LaunchboxService {
@@ -45,11 +49,15 @@ export class LaunchboxService {
     private readonly launchboxTokenHolderRepository: MongoRepository<LaunchboxTokenHolder>,
     @InjectRepository(LaunchboxTokenTransaction)
     private readonly launchboxTokenTransactionRepository: MongoRepository<LaunchboxTokenTransaction>,
+    @InjectRepository(LaunchboxUser)
+    private readonly launchboxUserRepository: MongoRepository<LaunchboxUser>,
     private readonly cloudinaryService: CloudinaryService,
     private readonly farcasterService: FarcasterService,
     private readonly contractService: ContractService,
     private readonly sharedService: SharedService,
     private readonly analyticService: AnalyticService,
+    private readonly privyService: PrivyService,
+    private readonly jwtService: JwtService,
   ) {}
 
   private logger = new Logger(LaunchboxService.name);
@@ -86,6 +94,68 @@ export class LaunchboxService {
         );
       }),
     );
+  }
+
+  async authenticate(privyUserId: string): Promise<IResponse | ServiceError> {
+    try {
+      const userExists = await this.launchboxUserRepository.findOne({
+        where: {
+          reference: privyUserId,
+        },
+      });
+
+      if (userExists) {
+        const { token, expire } = await this.generateToken(userExists.id);
+
+        return successResponse({
+          status: true,
+          message: 'Authenticated successfully',
+          data: {
+            token,
+            expire,
+            user: userExists,
+          },
+        });
+      }
+
+      const privyUser = await this.privyService.clinet.getUser(privyUserId);
+
+      const { identifier, type, walletAddress } = this.getAuthType(privyUser);
+
+      const newUser = this.launchboxUserRepository.create({
+        id: uuidv4(),
+        reference: privyUserId,
+        auth_id: identifier,
+        auth_type: type,
+        wallet_address: walletAddress,
+        is_active: true,
+      });
+
+      await this.launchboxUserRepository.save(newUser);
+
+      const { token, expire } = await this.generateToken(newUser.id);
+
+      return successResponse({
+        status: true,
+        message: 'Authenticated successfully',
+        data: {
+          token,
+          expire,
+          user: newUser,
+        },
+      });
+    } catch (error) {
+      this.logger.error('An error occurred while creating the token.', error);
+
+      if (error instanceof ServiceError) {
+        return error.toErrorResponse();
+      }
+
+      throw new ServiceError(
+        'An error occurred while authenticating.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      ).toErrorResponse();
+    }
   }
 
   async create(
@@ -1233,5 +1303,55 @@ export class LaunchboxService {
     }
 
     return this.cloudinaryService.upload(file, FileUploadFolder.Launchbox);
+  }
+
+  private async generateToken(id: string): Promise<{
+    token: string;
+    expire: number;
+  }> {
+    const token = this.jwtService.sign({
+      sub: id,
+    });
+    const decoded = this.jwtService.decode(token);
+
+    return {
+      token,
+      expire: decoded.exp,
+    };
+  }
+
+  private getAuthType(privyUser: User) {
+    const authTypes = [
+      {
+        check: () => privyUser.email,
+        type: 'email',
+        getId: () => privyUser.email?.address,
+      },
+      {
+        check: () => privyUser.farcaster,
+        type: 'farcaster',
+        getId: () => privyUser.farcaster?.username,
+      },
+      {
+        check: () => privyUser.wallet?.walletClientType !== 'privy',
+        type: () => privyUser.wallet?.walletClientType,
+        getId: () => privyUser.wallet?.address,
+      },
+    ];
+
+    for (const auth of authTypes) {
+      if (auth.check() && privyUser.wallet) {
+        return {
+          identifier: auth.getId(),
+          type: typeof auth.type === 'function' ? auth.type() : auth.type,
+          walletAddress: privyUser.wallet.address,
+        };
+      }
+    }
+
+    throw new ServiceError(
+      'No valid authentication method found',
+      HttpStatus.BAD_REQUEST,
+    );
   }
 }

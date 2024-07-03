@@ -66,4 +66,8 @@ export const env = {
   blockchainPrice: {
     url: envVar.get('BLOCKCHAIN_PRICE_URL').required().asString(),
   },
+  privy: {
+    appId: envVar.get('PRIVY_APP_ID').required().asString(),
+    appSecret: envVar.get('PRIVY_APP_SECRET').required().asString(),
+  },
 };

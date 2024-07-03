@@ -23,6 +23,7 @@ import { LaunchboxModule } from './modules/launchbox/launchbox.module';
 import { FarcasterModule } from './common/helpers/farcaster/farcaster.module';
 import { SharedModule } from './common/helpers/shared/shared.module';
 import { AnalyticModule } from './common/helpers/analytic/analytic.module';
+import { PrivyModule } from './common/helpers/privy/privy.module';
 import ormConfig from 'ormconfig';
 
 const envPath = getEnvPath();
@@ -54,6 +55,7 @@ const envPath = getEnvPath();
     FarcasterModule,
     SharedModule,
     AnalyticModule,
+    PrivyModule,
   ],
   controllers: [AppController],
   providers: [

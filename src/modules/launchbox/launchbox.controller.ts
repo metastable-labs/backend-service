@@ -15,12 +15,17 @@ import {
   UploadedFile,
   UploadedFiles,
   UseInterceptors,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
-import { LaunchboxService } from './launchbox.service';
+import { validateSync } from 'class-validator';
 import {
   FileFieldsInterceptor,
   FileInterceptor,
 } from '@nestjs/platform-express';
+import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
+import { LaunchboxService } from './launchbox.service';
 import {
   CustomUploadFileTypeValidator,
   ParseFilesPipe,
@@ -34,17 +39,37 @@ import {
   WebsiteBuilderDto,
 } from './dtos/launchbox.dto';
 import { FileMimes } from '../../common/enums/index.enum';
-import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ErrorResponse } from '../../common/responses';
 import { plainToInstance } from 'class-transformer';
-import { validateSync } from 'class-validator';
-import { flattenValidationErrors } from 'src/common/utils';
+import { flattenValidationErrors } from '../../common/utils';
+import { PrivyGuard } from '../../common/guards/privy.guard';
 
 @ApiTags('Launchbox')
 @UseInterceptors(ClassSerializerInterceptor)
 @Controller('launchbox')
 export class LaunchboxController {
   constructor(private readonly launchboxService: LaunchboxService) {}
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Authenticated successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Unauthorized request',
+    type: ErrorResponse,
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'An error occurred while authenticating',
+    type: ErrorResponse,
+  })
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PrivyGuard)
+  @Post('auth')
+  async auth(@Req() request: Request) {
+    return this.launchboxService.authenticate(request.body.userId);
+  }
 
   @ApiResponse({
     status: HttpStatus.CREATED,
