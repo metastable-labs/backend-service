@@ -8,7 +8,11 @@ import {
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Chain, Social } from '../interfaces/launchbox.interface';
+import {
+  Chain,
+  Social,
+  WebsiteBuilder,
+} from '../interfaces/launchbox.interface';
 import { TransactionType } from '../enums/launchbox.enum';
 
 @Entity({
@@ -53,6 +57,12 @@ export class LaunchboxToken {
   website_url: string;
 
   @Column()
+  telegram_url: string;
+
+  @Column()
+  twitter_url: string;
+
+  @Column()
   chain: Chain;
 
   @Column()
@@ -65,6 +75,9 @@ export class LaunchboxToken {
   configurations: {
     [key: string]: any;
   };
+
+  @Column()
+  website_builder: WebsiteBuilder;
 
   @CreateDateColumn()
   created_at: Date;
