@@ -7,3 +7,7 @@ export enum TransactionType {
   Sell = 'sell',
   Buy = 'buy',
 }
+
+export enum FileUploadFolder {
+  Launchbox = 'launchboxes',
+}
