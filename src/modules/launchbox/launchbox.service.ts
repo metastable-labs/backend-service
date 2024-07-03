@@ -784,8 +784,6 @@ export class LaunchboxService {
         message: 'Token website builder created successfully',
       });
     } catch (error) {
-      console.log(error);
-
       this.logger.error(
         'An error occurred while creating website builder',
         error.stack,
