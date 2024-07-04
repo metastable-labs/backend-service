@@ -113,6 +113,9 @@ export class LaunchboxToken {
   @Column()
   website_builder: WebsiteBuilder;
 
+  @Column()
+  user_id: string;
+
   @CreateDateColumn()
   created_at: Date;
 
