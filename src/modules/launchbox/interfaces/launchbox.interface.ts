@@ -32,6 +32,12 @@ interface HeroSection {
   image_url: string;
 }
 
+interface AboutSection {
+  title: string;
+  description: string;
+  image_url: string;
+}
+
 interface Tokenomics {
   [key: string]: string;
 }
@@ -61,4 +67,5 @@ export interface WebsiteBuilder {
   tokenomics: Tokenomics;
   faq: Faq;
   footer: Footer;
+  about_section: AboutSection;
 }
