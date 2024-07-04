@@ -145,7 +145,7 @@ export class LaunchboxService {
         },
       });
     } catch (error) {
-      this.logger.error('An error occurred while creating the token.', error);
+      this.logger.error('An error occurred while authenticating.', error.stack);
 
       if (error instanceof ServiceError) {
         return error.toErrorResponse();
@@ -158,7 +158,32 @@ export class LaunchboxService {
     }
   }
 
+  async authSession(user: LaunchboxUser): Promise<IResponse | ServiceError> {
+    try {
+      return successResponse({
+        status: true,
+        message: 'Authenticated session',
+        data: user,
+      });
+    } catch (error) {
+      this.logger.error(
+        'An error occurred while authenticating the session.',
+        error.stack,
+      );
+
+      if (error instanceof ServiceError) {
+        return error.toErrorResponse();
+      }
+
+      throw new ServiceError(
+        'An error occurred while authenticating the session. Please try again later.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      ).toErrorResponse();
+    }
+  }
+
   async create(
+    user: LaunchboxUser,
     body: CreateDto,
     file: Express.Multer.File,
   ): Promise<IResponse | ServiceError> {
@@ -175,6 +200,7 @@ export class LaunchboxService {
 
       const tokenExists = await this.launchboxTokenRepository.findOne({
         where: {
+          user_id: user.id,
           token_address: body.token_address,
           'chain.id': formattedChain.id,
         },
@@ -199,12 +225,13 @@ export class LaunchboxService {
         token_decimals: Number(body.token_decimals),
         token_total_supply: Number(body.token_total_supply),
         create_token_page: body.create_token_page === 'true',
-        chain: formattedChain,
+        chain: { ...formattedChain, deployer_address: user.wallet_address },
         socials: {
           warpcast: { channel: formattedSocials },
         },
         token_logo_url: logoUrl,
         is_active: true,
+        user_id: user.id,
       });
 
       await this.launchboxTokenRepository.save(launchbox);
@@ -235,12 +262,13 @@ export class LaunchboxService {
   }
 
   async updateOne(
+    user: LaunchboxUser,
     id: string,
     body: UpdateDto,
   ): Promise<IResponse | ServiceError> {
     try {
       const token = await this.launchboxTokenRepository.findOne({
-        where: { id },
+        where: { id, user_id: user.id },
       });
 
       if (!token) {
@@ -722,12 +750,12 @@ export class LaunchboxService {
   }
 
   async getChannelsByAddress(
-    address: string,
+    user: LaunchboxUser,
     limit: number,
   ): Promise<IResponse | ServiceError> {
     try {
       const channels = await this.farcasterService.getChannelsByAddress(
-        address,
+        user.wallet_address,
         limit,
       );
 
@@ -796,17 +824,20 @@ export class LaunchboxService {
   }
 
   async updateWebsiteBuilder(
+    user: LaunchboxUser,
     id: string,
     body: WebsiteBuilderDto,
     files: {
       logo: Express.Multer.File[];
       hero: Express.Multer.File[];
+      about: Express.Multer.File[];
     },
   ): Promise<IResponse | ServiceError> {
     try {
       const token = await this.launchboxTokenRepository.findOne({
         where: {
           id,
+          user_id: user.id,
         },
       });
 
@@ -819,10 +850,14 @@ export class LaunchboxService {
         );
       }
 
-      const { logoUrl, heroUrl } = await this.handleFileUploads(files, {
-        logoUrl: token.website_builder?.navigation?.logo_url,
-        heroUrl: token.website_builder?.hero_section?.image_url,
-      });
+      const { logoUrl, heroUrl, aboutUrl } = await this.handleFileUploads(
+        files,
+        {
+          logoUrl: token.website_builder?.navigation?.logo_url,
+          heroUrl: token.website_builder?.hero_section?.image_url,
+          aboutUrl: token.website_builder?.about_section?.image_url,
+        },
+      );
 
       const formattedBody: WebsiteBuilderDto = {
         ...body,
@@ -831,14 +866,21 @@ export class LaunchboxService {
       if (body.navigation || files.logo) {
         formattedBody.navigation = {
           ...body.navigation,
-          logo_url: logoUrl || body.navigation.logo_url,
+          logo_url: logoUrl ?? body.navigation.logo_url,
         };
       }
 
       if (body.hero_section || files.hero) {
         formattedBody.hero_section = {
           ...body.hero_section,
-          image_url: heroUrl || body.hero_section.image_url,
+          image_url: heroUrl ?? body.hero_section.image_url,
+        };
+      }
+
+      if (body.about_section || files.about) {
+        formattedBody.about_section = {
+          ...body.about_section,
+          image_url: aboutUrl ?? body.about_section.image_url,
         };
       }
 
@@ -1263,10 +1305,12 @@ export class LaunchboxService {
     files: {
       logo: Express.Multer.File[];
       hero: Express.Multer.File[];
+      about: Express.Multer.File[];
     },
-    existingUrls: { logoUrl?: string; heroUrl?: string },
-  ): Promise<{ logoUrl?: string; heroUrl?: string }> {
-    const result: { logoUrl?: string; heroUrl?: string } = {};
+    existingUrls: { logoUrl?: string; heroUrl?: string; aboutUrl?: string },
+  ): Promise<{ logoUrl?: string; heroUrl?: string; aboutUrl?: string }> {
+    const result: { logoUrl?: string; heroUrl?: string; aboutUrl?: string } =
+      {};
 
     if (files.logo && files.logo.length > 0) {
       result.logoUrl = await this.uploadOrUpdateFile(
@@ -1279,6 +1323,13 @@ export class LaunchboxService {
       result.heroUrl = await this.uploadOrUpdateFile(
         files.hero[0],
         existingUrls.heroUrl,
+      );
+    }
+
+    if (files.about && files.about.length > 0) {
+      result.aboutUrl = await this.uploadOrUpdateFile(
+        files.about[0],
+        existingUrls.aboutUrl,
       );
     }
 
@@ -1326,11 +1377,6 @@ export class LaunchboxService {
         check: () => privyUser.email,
         type: 'email',
         getId: () => privyUser.email?.address,
-      },
-      {
-        check: () => privyUser.farcaster,
-        type: 'farcaster',
-        getId: () => privyUser.farcaster?.username,
       },
       {
         check: () => privyUser.wallet?.walletClientType !== 'privy',
