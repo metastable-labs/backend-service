@@ -26,8 +26,6 @@ export class PrivyGuard implements CanActivate {
       const verifiedClaims =
         await this.privyService.clinet.verifyAuthToken(token);
 
-      console.log(verifiedClaims);
-
       request.body = {
         ...request.body,
         userId: verifiedClaims.userId,
