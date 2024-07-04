@@ -149,10 +149,6 @@ export class ChainDto {
   @IsString()
   name: string;
 
-  @IsNotEmpty()
-  @IsEthereumAddress()
-  deployer_address: string;
-
   @IsString()
   @IsNotEmpty()
   transaction_hash: string;
@@ -210,6 +206,18 @@ class NavigationDto {
 }
 
 class HeroSectionDto {
+  @IsNotEmpty()
+  @IsString()
+  title: string;
+
+  @IsNotEmpty()
+  @IsString()
+  description: string;
+
+  image_url: string | undefined;
+}
+
+class AboutSectionDto {
   @IsNotEmpty()
   @IsString()
   title: string;
@@ -304,7 +312,16 @@ export class WebsiteBuilderDto {
   )
   hero_section: HeroSectionDto;
 
-  @IsNotEmpty()
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => AboutSectionDto)
+  @Transform(({ value }) =>
+    typeof value === 'string' ? JSON.parse(value) : value,
+  )
+  about_section: AboutSectionDto;
+
+  @IsOptional()
   @IsObject()
   @ValidateNested()
   @Type(() => TokenomicsDto)
