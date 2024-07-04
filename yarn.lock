@@ -2891,10 +2891,10 @@ chalk@^5.3.0:
   resolved "https://registry.yarnpkg.com/chalk/-/chalk-5.3.0.tgz#67c20a7ebef70e7f3970a01f90fa210cb6860385"
   integrity sha512-dLitG79d+GV1Nb/VYcCDFivJeK1hiukt9QjRNVOsUtTy1rR1YJsmpGGTZ3qJos+uw7WmWF4wUwBd9jxjocFC2w==
 
-channels-lib@^2.0.3:
-  version "2.0.3"
-  resolved "https://registry.yarnpkg.com/channels-lib/-/channels-lib-2.0.3.tgz#43231680a114cc7b85444353dbe7b30f5252a85c"
-  integrity sha512-ZU5g0C7cevxOIcYX49yiaiikMhbyGc++VCuxnmWhN/pG5tB8nu3fiKLq53QplZTb13XLzhiUI3Tl+ayF5NsuYA==
+channels-lib@^2.0.4:
+  version "2.0.4"
+  resolved "https://registry.yarnpkg.com/channels-lib/-/channels-lib-2.0.4.tgz#58f56282618fd80da33a8ad07b276bc2223fe0d1"
+  integrity sha512-1BVlIlhaDTsjQkJIiiTEVlCHAJiD3fuT+Brqg2rpuvtCana8joX6Ur1RMvsTp/4s+FHRYq5nNKUotugnHabXIA==
   dependencies:
     "@airstack/node" "^0.0.7"
     "@apollo/client" "^3.10.5"
