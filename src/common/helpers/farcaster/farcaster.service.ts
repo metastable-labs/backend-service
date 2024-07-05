@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import Launchbox from 'channels-lib';
+
+import { Channel } from 'channels-libz';
 import { env } from '../../config/env';
-import { Channel } from './interfaces/farcaster.interface';
 
 @Injectable()
 export class FarcasterService {
@@ -18,15 +19,15 @@ export class FarcasterService {
         address as `0x${string}`,
       );
 
-      return channels.FarcasterChannels.FarcasterChannel as Channel[];
+      return channels
     } catch (error) {
       return [];
     }
   }
 
-  async getChannelCasts(channelUrl: string) {
+  async getChannelCasts(channelName: string) {
     try {
-      return await this.launchbox.getCasts(channelUrl);
+      return await this.launchbox.getChannelCasts(channelName)
     } catch (error) {
       return [];
     }

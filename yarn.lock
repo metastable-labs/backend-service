@@ -2599,10 +2599,19 @@ chalk@^5.3.0:
   resolved "https://registry.yarnpkg.com/chalk/-/chalk-5.3.0.tgz#67c20a7ebef70e7f3970a01f90fa210cb6860385"
   integrity sha512-dLitG79d+GV1Nb/VYcCDFivJeK1hiukt9QjRNVOsUtTy1rR1YJsmpGGTZ3qJos+uw7WmWF4wUwBd9jxjocFC2w==
 
-channels-lib@^1.1.0:
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/channels-lib/-/channels-lib-1.1.0.tgz#765ed84a82d2f6ca4386b5d5046273e11e0b2a84"
-  integrity sha512-11D2wuXjnaQHEGMMiIoxnXVatIrDs7rDfer9ZIIAPNjx1MJja4YURxdoP6QxCZjwhmYVU4hROmvV5VvnRetQ+Q==
+channels-lib@^2.0.2:
+  version "2.0.2"
+  resolved "https://registry.yarnpkg.com/channels-lib/-/channels-lib-2.0.2.tgz#58ac39ab14296f18e30517c084cbc8e75f7b9ce3"
+  integrity sha512-b/3+YzH2gri89VCrdFe4Ye5PMI5pOCy1VGCLcSkS8EkNblUiIpCYR1cmzU9gKGMmsdMRY4YnXMfySVQdXlNi+A==
+  dependencies:
+    "@airstack/node" "^0.0.7"
+    "@apollo/client" "^3.10.5"
+    graphql "^16.8.2"
+
+channels-libz@2.0.1:
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/channels-libz/-/channels-libz-2.0.1.tgz#b66613bd8aad3cf9f2a76ed6faed2af67fee0875"
+  integrity sha512-po0u1bH0OxHQTg0D+wxUpApebj2n35qrcZFnucjSY08ZcxnGKTmNejqihao1UWgGr9GEUvKv8lrU0WOLMgYItA==
   dependencies:
     "@airstack/node" "^0.0.7"
     "@apollo/client" "^3.10.5"

@@ -1,11 +1,11 @@
 import { HttpService } from '@nestjs/axios';
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
-
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
+import Launchbox, { Channel } from 'channels-libz';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
-import { LessThan, MongoRepository } from 'typeorm';
+import { MongoRepository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import validator from 'validator';
 import { env } from '../../common/config/env';
@@ -451,8 +451,7 @@ export class LaunchboxService {
     address: string,
   ): Promise<IResponse | ServiceError> {
     try {
-      const channels =
-        await this.farcasterService.getChannelsByAddress(address);
+      const channels: Channel[] = await this.farcasterService.getChannelsByAddress(address);
 
       const formattedChannels = channels.map((channel) => {
         return {
@@ -463,7 +462,6 @@ export class LaunchboxService {
           lead_ids: channel.leadIds,
           dapp_name: channel.dappName,
           url: channel.url,
-          follower_count: channel.followerCount,
           created_at: channel.createdAtTimestamp,
         };
       });
@@ -1214,52 +1212,69 @@ export class LaunchboxService {
     await Promise.all(activityPromises);
   }
 
-
-
-
-  @Cron('45 * * * * *')
+  @Cron('*/30 * * * * *')
   async calculateRanks() {
     try {
-      const fourMinutesAgo = new Date(Date.now() - 4 * 60 * 1000);
 
-      const hotLeaderboards = await this.leaderboardRepository.find({
+      type ActionTokenMap = Record<string, string[]>;
+
+      this.logger.debug("calculating leaderboard now...")
+
+      const actionTokenMap: ActionTokenMap = {};
+      const launchbox = new Launchbox(env.airstack.key, "prod")
+
+
+      const leaderboards = await this.leaderboardRepository.find({
         where: {
-          updated_at: LessThan(fourMinutesAgo),
+          is_active: true
         },
+        relations: ['incentives'],
       });
 
-      this.logger.debug('Calculate Rewards');
-
       const channels = await this.getSystemChannels();
-
-      const configuredChannels = hotLeaderboards.map((ldb) => {
-        const configuredChannels = ldb.incentives.map((cfg) => {
-          const channel = channels.find(ch => ch.actions.some(ac => ac.id === cfg.action_id));
-          if (channel) {
-            const action = channel.actions.find(ac => ac.id === cfg.action_id);
-            if (action) {
-              // FIX: do this at entity level
-              const { _id, ...clean } = channel
-              return {
-                ...clean,
-                actions: [action]
-              };
-            }
-          }
-          return null;
-        }).filter(i => i !== null) as unknown as IIncentiveChannel[];
-
-        return {
-          leaderboard: ldb.id,
-          channels: configuredChannels
-        }
+      const actions = channels.flatMap((c) => {
+        return c.actions
       })
 
+      for (const leaderboard of leaderboards) {
+        for (const incentive of leaderboard.incentives) {
+          if (incentive.is_active) {
+            const action = actions.find((a) => a.id === incentive.action_id)
+            if (!action) continue
+            const key = `${action.id}:${action.slug}`
+            if (!actionTokenMap[key]) {
+              actionTokenMap[key] = [];
+            }
+            actionTokenMap[key].push(leaderboard.token_id);
+          }
+        }
+      }
 
+      for (const [action, tokens] of Object.entries(actionTokenMap)) {
 
+        const [_, slug] = action.split(":")
+        switch (slug) {
+          case FarcasterActions.FOLLOW_CHAN:
 
-      for (const leaderboard of hotLeaderboards) {
+            const tokenFollowers = await Promise.all(tokens.map(async (token) => {
+              return launchbox.getChannelParticipants(token)
+            }))
 
+            console.log(`follow who know road`)
+            break;
+          case FarcasterActions.CAST:
+            const tokenChannelCasts = await Promise.all(tokens.map(async (token) => {
+              return launchbox.getChannelCasts(token)
+            }))
+            break
+          case NFTActions.OWN:
+            const tokenNftOwners = await Promise.all(tokens.map(async (token) => {
+              return launchbox.getChannelParticipants(token)
+            }))
+            break
+          default:
+            break;
+        }
       }
 
 

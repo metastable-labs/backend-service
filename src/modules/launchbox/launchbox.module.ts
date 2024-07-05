@@ -41,6 +41,6 @@ import { LaunchboxService } from './launchbox.service';
 export class LaunchboxModule implements OnModuleInit {
   constructor(private readonly service: LaunchboxService) { }
   async onModuleInit() {
-    // await this.service.seedSystemChannels()
+    await this.service.seedSystemChannels()
   }
 }
