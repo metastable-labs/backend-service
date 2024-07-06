@@ -33,7 +33,7 @@ import { flattenValidationErrors } from 'src/common/utils';
 import { FileMimes } from '../../common/enums/index.enum';
 import { ErrorResponse } from '../../common/responses';
 import { CustomUploadFileTypeValidator, ParseFilesPipe } from '../../common/validators/file.validator';
-import { ActionDTO, PlayDTO, RankingPaginateDto } from './dtos/launchbox.dto';
+import { PlayDTO, RankingPaginateDto } from './dtos/launchbox.dto';
 import { LaunchboxService } from './launchbox.service';
 
 @ApiTags('Launchbox')
@@ -450,15 +450,15 @@ export class LaunchboxController {
   }
 
 
+
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Get Active incentive channels',
+    description: 'Calculate Ranks',
   })
-  @Post("/tokens/:id/incentives")
-  async getActiveIncentives(@Param('id') id: string, @Body() action: ActionDTO) {
-    return this.launchboxService.getChannelsByAddress
+  @Get("/tokens/calculate_rankings")
+  async scoreParticipants() {
+    return this.launchboxService.calculateRanks()
   }
-
 
   @ApiResponse({
     status: HttpStatus.OK,

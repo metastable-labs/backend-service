@@ -268,9 +268,6 @@ export class TokenConfiguredAction {
 
 
 
-
-
-
 @Entity({
   name: "launchbox_incentive_channels"
 })

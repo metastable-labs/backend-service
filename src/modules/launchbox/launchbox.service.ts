@@ -34,7 +34,7 @@ import { IIncentiveChannel, ILaunchboxTokenLeaderboard } from './interfaces/laun
 
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import Launchbox from 'channels-lib';
+import Launchbox, { Participant } from 'channels-lib';
 import { env } from 'src/common/config/env';
 import { MongoRepository } from 'typeorm';
 import validator from 'validator';
@@ -1786,90 +1786,102 @@ export class LaunchboxService {
   }
 
 
+
   async calculateRanks() {
     try {
-
-
-      type Token = {
-        id: string;
-        channel: string;
-        nft_contract: string
-      }
-
-      type ActionTokenMap = Record<string, Token[]>;
-
-      this.logger.debug("calculating leaderboard now...")
-
-
-      const launchbox = new Launchbox(env.airstack.key, "prod")
-
+      const launchbox = new Launchbox(env.airstack.key, "prod");
 
       const leaderboards = await this.leaderboardRepository.find({
         where: {
           is_active: true
         },
-        relations: ['incentives'],
+        relations: ['incentives', "participants"],
       });
 
       const channels = await this.getSystemChannels();
-      const actions = channels.flatMap((c) => {
-        return c.actions
-      })
+      const actions = channels.flatMap((c) => c.actions);
 
-      // 0. keep track of actions
-      const actionTokenMap: ActionTokenMap = {};
-      // 1. get all the leaderboards
       for (const leaderboard of leaderboards) {
+        const updatedParticipants: LeaderboardParticipant[] = [];
+
         for (const incentive of leaderboard.incentives) {
-          if (incentive.is_active) {
+          if (!incentive.is_active) continue;
 
-            const action = actions.find((a) => a.id === incentive.action_id)
-            const token = await this.launchboxTokenRepository.findOne({
-              where: {
-                id: leaderboard.token_id
-              }
-            })
+          const action = actions.find(a => a.id === incentive.action_id);
+          if (!action) continue;
 
-            if (!action || !token) continue
-            const key = `${action.id}:${action.slug}`
-            if (!actionTokenMap[key]) {
-              actionTokenMap[key] = [];
-            }
-            actionTokenMap[key].push({
-              id: leaderboard.token_id,
-              channel: token.socials.warpcast.channel.name,
-              nft_contract: ""
-            });
+          if (action.slug === NFTActions.OWN) {
+            await this.processNFTAction(leaderboard, incentive, action, updatedParticipants);
+          } else if (action.slug === FarcasterActions.CAST || action.slug === FarcasterActions.FOLLOW_CHAN) {
+            await this.processFarcasterAction(leaderboard, incentive, action, launchbox, updatedParticipants);
           }
         }
+
+        leaderboard.participants = updatedParticipants;
+        await this.leaderboardRepository.save(leaderboard);
       }
-
-      for (const [action, tokens] of Object.entries(actionTokenMap)) {
-
-        const [_, slug] = action.split(":")
-        // switch (slug) {
-        //   case FarcasterActions.FOLLOW_CHAN:
-
-        //     const farcasterFollowers = await this.getChannelFollowers()
-        //     break;
-        //   case FarcasterActions.CAST:
-        //     const tokenChannelCasts = await Promise.all(tokens.map(async (token) => {
-        //       return launchbox.getChannelCasts(token)
-        //     }))
-        //     break
-        //   case NFTActions.OWN:
-        //     const tokenNftOwners = await Promise.all(tokens.map(async (token) => {
-        //       return launchbox.getChannelParticipants(token)
-        //     }))
-        //     break
-        //   default:
-        //     break;
-        // }
-      }
-
 
     } catch (error) {
       this.logger.error('Error calculating ranks', error.stack);
+    }
+  }
+
+  private async processNFTAction(
+    leaderboard: LaunchboxTokenLeaderboard,
+    incentive: TokenConfiguredAction,
+    action: IncentiveAction,
+    updatedParticipants: LeaderboardParticipant[]
+  ) {
+    const contractAddress = incentive.metadata.contract;
+    if (!contractAddress) {
+      this.logger.warn(`No contract address for NFT action ${action.id}`);
+      return;
+    }
+
+    for (const participant of leaderboard.participants) {
+      const balance = await this.contractService.getBalance(participant.associated_address, contractAddress);
+      if (balance > 0) {
+        const updatedParticipant = { ...participant };
+        if (!updatedParticipant.completed_actions.includes(action.id)) {
+          updatedParticipant.completed_actions.push(action.id);
+        }
+        updatedParticipants.push(updatedParticipant);
+      } else {
+        updatedParticipants.push(participant);
+      }
+    }
+  }
+
+  private async processFarcasterAction(
+    leaderboard: LaunchboxTokenLeaderboard,
+    incentive: TokenConfiguredAction,
+    action: IncentiveAction,
+    launchbox: Launchbox,
+    updatedParticipants: LeaderboardParticipant[]
+  ) {
+    const channelName = incentive.metadata.channel;
+    if (!channelName) {
+      this.logger.warn(`No channel name for Farcaster action ${action.id}`);
+      return;
+    }
+
+    const channelParticipants: Participant[] = await launchbox.getChannelParticipants(channelName);
+
+    for (const participant of leaderboard.participants) {
+      const updatedParticipant = { ...participant };
+      const matchingChannelParticipant = channelParticipants.find(
+        cp => cp.profileName.toLowerCase() === participant.farcaster_username.toLowerCase()
+      );
+
+      if (matchingChannelParticipant) {
+        if (!updatedParticipant.completed_actions.includes(action.id)) {
+          updatedParticipant.completed_actions.push(action.id);
+        }
+
+
+      }
+
+      updatedParticipants.push(updatedParticipant);
     }
   }
 
