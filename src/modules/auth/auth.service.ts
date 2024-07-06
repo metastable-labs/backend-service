@@ -112,7 +112,6 @@ export class AuthService {
         },
       });
     } catch (error) {
-      console.error(error);
       if (error instanceof ServiceError) {
         return error.toErrorResponse();
       }

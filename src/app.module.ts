@@ -10,10 +10,13 @@ import { AppService } from './app.service';
 import { env } from './common/config/env';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { AnalyticModule } from './common/helpers/analytic/analytic.module';
 import { CloudinaryModule } from './common/helpers/cloudinary/cloudinary.module';
 import { ContractModule } from './common/helpers/contract/contract.module';
 import { FarcasterModule } from './common/helpers/farcaster/farcaster.module';
 import { GithubModule } from './common/helpers/github/github.module';
+import { PrivyModule } from './common/helpers/privy/privy.module';
+import { SharedModule } from './common/helpers/shared/shared.module';
 import { LoggerMiddleware } from './common/middlewares/logger.middleware';
 import { getEnvPath } from './common/utils';
 import { AuthModule } from './modules/auth/auth.module';
@@ -52,6 +55,9 @@ const envPath = getEnvPath();
     ContractModule,
     LaunchboxModule,
     FarcasterModule,
+    SharedModule,
+    AnalyticModule,
+    PrivyModule,
   ],
   controllers: [AppController],
   providers: [

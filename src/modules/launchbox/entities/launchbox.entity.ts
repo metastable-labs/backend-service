@@ -9,7 +9,44 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { Chain, Social } from '../interfaces/launchbox.interface';
+import { TransactionType } from '../enums/launchbox.enum';
+import { Chain, Social, WebsiteBuilder } from '../interfaces/launchbox.interface';
+
+@Entity({
+  name: 'launchbox_users',
+})
+export class LaunchboxUser {
+  @Exclude()
+  @ObjectIdColumn({ select: false })
+  _id: ObjectId;
+
+  @PrimaryColumn()
+  id: string;
+
+  @Exclude()
+  @Column()
+  reference: string;
+
+  @Column()
+  auth_id: string;
+
+  @Column()
+  auth_type: string;
+
+  @Column()
+  wallet_address: string;
+
+  @Column()
+  is_active: boolean;
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
+}
+
+
 @Entity({
   name: 'launchbox_tokens',
 })
@@ -52,6 +89,12 @@ export class LaunchboxToken {
   website_url: string;
 
   @Column()
+  telegram_url: string;
+
+  @Column()
+  twitter_url: string;
+
+  @Column()
   chain: Chain;
 
   @Column()
@@ -64,6 +107,12 @@ export class LaunchboxToken {
   configurations: {
     [key: string]: any;
   };
+
+  @Column()
+  website_builder: WebsiteBuilder;
+
+  @Column()
+  user_id: string;
 
   @CreateDateColumn()
   created_at: Date;
@@ -126,7 +175,7 @@ export class LaunchboxTokenTransaction {
   fee: string;
 
   @Column()
-  type: string;
+  type: TransactionType;
 
   @Column()
   transaction_hash: string;
@@ -137,6 +186,12 @@ export class LaunchboxTokenTransaction {
   @Column()
   token_id: string;
 
+  @Column()
+  chain: {
+    id: number;
+    name: string;
+  };
+
   @CreateDateColumn()
   created_at: Date;
 
@@ -144,6 +199,10 @@ export class LaunchboxTokenTransaction {
   updated_at: Date;
 }
 
+class ActionMeta {
+  contract?: string;
+  channel?: string;
+}
 
 @Entity({
   name: "launchbox_token_leaderboard"
@@ -168,13 +227,13 @@ export class LaunchboxTokenLeaderboard {
   @UpdateDateColumn()
   updated_at: Date;
 
-  @Column((type) => TokenConfiguredAction)
+  @Column("jsonb", { array: true, default: [] })
   incentives: TokenConfiguredAction[]
 
-
-  @Column((type) => LeaderboardParticipant)
+  @Column("jsonb", { array: true, default: [] })
   participants: LeaderboardParticipant[]
 }
+
 
 @Entity({
   name: "launchbox_token_leaderboard_actions"
@@ -197,12 +256,19 @@ export class TokenConfiguredAction {
   is_active: boolean
 
 
+  @Column()
+  metadata: ActionMeta
+
   @CreateDateColumn()
   created_at: Date;
 
   @UpdateDateColumn()
   updated_at: Date;
 }
+
+
+
+
 
 
 @Entity({

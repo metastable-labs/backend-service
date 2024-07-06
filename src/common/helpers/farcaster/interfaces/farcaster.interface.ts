@@ -9,3 +9,14 @@ export interface Channel {
   dappName: string;
   followerCount: number;
 }
+
+export interface ChannelDataPoint {
+  date: Date;
+  castsCount: number;
+}
+
+export interface ChannelAnalytics {
+  percentageChange: number;
+  isIncreased: boolean;
+  dataPoints: ChannelDataPoint[];
+}

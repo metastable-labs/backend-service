@@ -1,8 +1,10 @@
 import {
+  BadRequestException,
   Body,
   ClassSerializerInterceptor,
   Controller,
   Get,
+  HttpCode,
   HttpStatus,
   MaxFileSizeValidator,
   Param,
@@ -10,18 +12,27 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UploadedFile,
+  UploadedFiles,
+  UseGuards,
   UseInterceptors
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { env } from '../../common/config/env';
 
-import { CreateDto, PaginateDto, UpdateDto } from './dtos/launchbox.dto';
+import { ActionsArrayDTO, CreateDto, PaginateDto, PriceAnalyticQueryDto, UpdateDto, WebsiteBuilderDto } from './dtos/launchbox.dto';
 
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
+import { LaunchboxAuthGuard } from 'src/common/guards/lauchbox.auth.guard';
+import { PrivyGuard } from 'src/common/guards/privy.guard';
+import { LaunchboxAuthRequest } from 'src/common/interfaces/request.interface';
+import { flattenValidationErrors } from 'src/common/utils';
 import { FileMimes } from '../../common/enums/index.enum';
 import { ErrorResponse } from '../../common/responses';
-import { CustomUploadFileTypeValidator } from '../../common/validators/file.validator';
+import { CustomUploadFileTypeValidator, ParseFilesPipe } from '../../common/validators/file.validator';
 import { ActionDTO, PlayDTO, RankingPaginateDto } from './dtos/launchbox.dto';
 import { LaunchboxService } from './launchbox.service';
 
@@ -30,6 +41,48 @@ import { LaunchboxService } from './launchbox.service';
 @Controller('launchbox')
 export class LaunchboxController {
   constructor(private readonly launchboxService: LaunchboxService) { }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Authenticated successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Unauthorized request',
+    type: ErrorResponse,
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'An error occurred while authenticating',
+    type: ErrorResponse,
+  })
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PrivyGuard)
+  @Post('auth')
+  async auth(@Req() request: LaunchboxAuthRequest) {
+    return this.launchboxService.authenticate(request.body.userId);
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Authenticated session',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Unauthorized request',
+    type: ErrorResponse,
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'An error occurred while authenticating the session',
+    type: ErrorResponse,
+  })
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(LaunchboxAuthGuard)
+  @Get('auth/session')
+  async authSession(@Req() request: LaunchboxAuthRequest) {
+    return this.launchboxService.authSession(request.user);
+  }
 
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -45,9 +98,11 @@ export class LaunchboxController {
     description: 'Token already exists',
     type: ErrorResponse,
   })
+  @UseGuards(LaunchboxAuthGuard)
   @UseInterceptors(FileInterceptor('logo'))
   @Post('/tokens')
   async create(
+    @Req() req: LaunchboxAuthRequest,
     @Body() createDto: CreateDto,
     @UploadedFile(
       new ParseFilePipe({
@@ -68,7 +123,7 @@ export class LaunchboxController {
     )
     file: Express.Multer.File,
   ) {
-    return this.launchboxService.create(createDto, file);
+    return this.launchboxService.create(req.user, createDto, file);
   }
 
   @ApiResponse({
@@ -101,9 +156,14 @@ export class LaunchboxController {
     description: 'Token not found',
     type: ErrorResponse,
   })
+  @UseGuards(LaunchboxAuthGuard)
   @Patch('/tokens/:id')
-  async updateOne(@Param('id') id: string, @Body() body: UpdateDto) {
-    return this.launchboxService.updateOne(id, body);
+  async updateOne(
+    @Req() req: LaunchboxAuthRequest,
+    @Param('id') id: string,
+    @Body() body: UpdateDto,
+  ) {
+    return this.launchboxService.updateOne(req.user, id, body);
   }
 
   @ApiResponse({
@@ -124,6 +184,52 @@ export class LaunchboxController {
   @Get('/tokens/:reference')
   async findOne(@Param('reference') reference: string) {
     return this.launchboxService.findOne(reference);
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Token price analytics fetched successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description:
+      'An error occurred while fetching the token price analytics. Please try again later.',
+    type: ErrorResponse,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Token not found',
+    type: ErrorResponse,
+  })
+  @Get('/tokens/:reference/price-analytics')
+  async getPriceAnalytics(
+    @Param('reference') reference: string,
+    @Query() query: PriceAnalyticQueryDto,
+  ) {
+    return this.launchboxService.getPriceAnalytics(reference, query.period);
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Token channel analytics fetched successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description:
+      'An error occurred while fetching the token channel analytics. Please try again later.',
+    type: ErrorResponse,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Token not found',
+    type: ErrorResponse,
+  })
+  @Get('/tokens/:reference/channel-analytics')
+  async getChannelAnalytics(
+    @Param('reference') reference: string,
+    @Query() query: PriceAnalyticQueryDto,
+  ) {
+    return this.launchboxService.getChannelAnalytics(reference, query.period);
   }
 
   @ApiResponse({
@@ -185,8 +291,89 @@ export class LaunchboxController {
     type: ErrorResponse,
   })
   @Get('/tokens/:id/casts')
-  async getTokenCasts(@Param('id') id: string) {
-    return this.launchboxService.getTokenCasts(id);
+  async getTokenCasts(@Param('id') id: string, @Query() query: PaginateDto) {
+    return this.launchboxService.getTokenCasts(id, parseInt(query.take));
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Token website builder created successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Token not found',
+    type: ErrorResponse,
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description:
+      'An error occurred while creating website builder. Please try again later.',
+    type: ErrorResponse,
+  })
+  @UseGuards(LaunchboxAuthGuard)
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'logo', maxCount: 1 },
+      { name: 'hero', maxCount: 1 },
+      { name: 'about', maxCount: 1 },
+    ]),
+  )
+  @HttpCode(HttpStatus.OK)
+  @Patch('/tokens/:id/website-builder')
+  async updateWebsiteBuilder(
+    @Req() req: LaunchboxAuthRequest,
+    @Param('id') id: string,
+    @Body() body: Record<string, string>,
+    @UploadedFiles(
+      new ParseFilesPipe(
+        new ParseFilePipe({
+          fileIsRequired: false,
+          validators: [
+            new MaxFileSizeValidator({
+              maxSize: env.file.maxSize * 1000 * 1024,
+            }),
+            new CustomUploadFileTypeValidator({
+              fileType: [
+                FileMimes.PNG,
+                FileMimes.JPEG,
+                FileMimes.JPG,
+                FileMimes.SVG,
+              ],
+            }),
+          ],
+        }),
+      ),
+    )
+    files: {
+      logo: Express.Multer.File[];
+      hero: Express.Multer.File[];
+      about: Express.Multer.File[];
+    },
+  ) {
+    const parsedFormData = Object.entries(body).reduce(
+      (acc, [key, value]) => {
+        try {
+          acc[key] = JSON.parse(value);
+        } catch {
+          acc[key] = value;
+        }
+        return acc;
+      },
+      {} as Record<string, any>,
+    );
+
+    const dto = plainToInstance(WebsiteBuilderDto, {
+      ...parsedFormData,
+    });
+
+    const validationErrors = validateSync(dto);
+
+    if (validationErrors.length > 0) {
+      const flatErrors = flattenValidationErrors(validationErrors);
+      throw new BadRequestException(flatErrors);
+    }
+
+    return this.launchboxService.updateWebsiteBuilder(req.user, id, dto, files);
   }
 
   @ApiResponse({
@@ -198,9 +385,16 @@ export class LaunchboxController {
     description: 'An error occurred while fetching the channels',
     type: ErrorResponse,
   })
+  @UseGuards(LaunchboxAuthGuard)
   @Get('/channels/:address')
-  async getChannelsByAddress(@Param('address') address: string) {
-    return this.launchboxService.getChannelsByAddress(address);
+  async getChannelsByAddress(
+    @Req() req: LaunchboxAuthRequest,
+    @Query() query: PaginateDto,
+  ) {
+    return this.launchboxService.getChannelsByAddress(
+      req.user,
+      parseInt(query.take),
+    );
   }
 
   @ApiResponse({
@@ -213,21 +407,8 @@ export class LaunchboxController {
     type: ErrorResponse,
   })
   @Get('/price')
-  async getPrice(@Query() query: { coin: string; currency: string }) {
-    query.currency = query.currency || 'usd';
-    query.coin = query.coin || 'ethereum';
-
-    return this.launchboxService.getCoinPrice(query);
-  }
-
-  @Get('tokens/holders/seed')
-  async seedHolders() {
-    return this.launchboxService.seedTokenHolders();
-  }
-
-  @Get('tokens/transactions/seed')
-  async seedTransactions() {
-    return this.launchboxService.seedTokenTransactions();
+  async getPrice() {
+    return this.launchboxService.getCoinPrice();
   }
 
   @ApiResponse({
@@ -264,8 +445,8 @@ export class LaunchboxController {
     description: 'Get System default incentive channels',
   })
   @Post("/tokens/:id/incentives")
-  async activateIncentive(@Param('id') id: string, @Body() action: ActionDTO) {
-    return this.launchboxService.addIncentiveAction(id, action)
+  async activateIncentive(@Param('id') id: string, @Body() actions: ActionsArrayDTO) {
+    return this.launchboxService.addIncentiveAction(id, actions)
   }
 
 
