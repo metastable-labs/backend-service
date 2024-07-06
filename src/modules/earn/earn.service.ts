@@ -1,24 +1,25 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { v4 as uuidv4 } from 'uuid';
-import { Activity } from './entities/activity.entity';
+import { env } from 'src/common/config/env';
 import { MongoRepository } from 'typeorm';
-import { Referral } from './entities/referral.entity';
+import { v4 as uuidv4 } from 'uuid';
+import { ServiceError } from '../../common/errors/service.error';
+import { ContractService } from '../../common/helpers/contract/contract.service';
+import { IResponse } from '../../common/interfaces/response.interface';
+import { successResponse } from '../../common/responses/success.helper';
+import { generateCode } from '../../common/utils';
+import { User } from '../user/entities/user.entity';
+import { RegisterDto } from './dtos/earn.dto';
+import { Activity } from './entities/activity.entity';
 import { Multiplier } from './entities/multiplier.entity';
+import { Referral } from './entities/referral.entity';
+import { Transaction } from './entities/transaction.entity';
 import {
   ActivitySlug,
   MultiplierSlug,
   TransactionStatus,
   TransactionType,
 } from './enums/earn.enum';
-import { User } from '../user/entities/user.entity';
-import { Transaction } from './entities/transaction.entity';
-import { RegisterDto } from './dtos/earn.dto';
-import { IResponse } from '../../common/interfaces/response.interface';
-import { ServiceError } from '../../common/errors/service.error';
-import { generateCode } from '../../common/utils';
-import { successResponse } from '../../common/responses/success.helper';
-import { ContractService } from '../../common/helpers/contract/contract.service';
 
 @Injectable()
 export class EarnService {
@@ -34,7 +35,7 @@ export class EarnService {
     @InjectRepository(Multiplier)
     private readonly multiplierRepository: MongoRepository<Multiplier>,
     private readonly contractService: ContractService,
-  ) {}
+  ) { }
 
   async register(
     body: RegisterDto,
@@ -271,7 +272,7 @@ export class EarnService {
         throw new ServiceError('User not found', HttpStatus.NOT_FOUND);
       }
 
-      const balance = await this.contractService.getBalance(address);
+      const balance = await this.contractService.getBalance(address, env.contract.nftAddress);
       if (balance === 0) {
         throw new ServiceError(
           'Not eligible for NFT earnings, please mint NFT first',
