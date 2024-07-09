@@ -4,14 +4,10 @@ export interface PriceDataPoint {
   date: string;
   timestamp: number;
   price: string;
+  priceInEth: string;
 }
 
 export interface PriceAnalytics {
-  averagePrice: string;
-  minPrice: string;
-  maxPrice: string;
-  priceAtStart: string;
-  priceAtEnd: string;
   percentageChange: string;
   isIncreased: boolean;
   dataPoints: PriceDataPoint[];
