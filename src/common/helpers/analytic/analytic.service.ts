@@ -11,13 +11,17 @@ import {
 import { ContractService } from '../contract/contract.service';
 import { Period } from './enums/analytic.enum';
 import { getDateRangeFromKey, getPeriod } from '../../utils';
+import { SharedService } from '../shared/shared.service';
 
 @Injectable()
 export class AnalyticService {
   private cache: Map<string, CacheEntry> = new Map();
   private cacheDuration = 5 * 60 * 1000; // 5m Cache duration in milliseconds
 
-  constructor(private readonly contractService: ContractService) {}
+  constructor(
+    private readonly contractService: ContractService,
+    private readonly sharedService: SharedService,
+  ) {}
 
   private readonly logger = new Logger(AnalyticService.name);
 
@@ -95,10 +99,9 @@ export class AnalyticService {
       this.getProvider(),
     );
 
-    let totalPrice = ethers.BigNumber.from(0);
-    let minPrice = ethers.constants.MaxUint256;
-    let maxPrice = ethers.BigNumber.from(0);
     const dataPoints: PriceDataPoint[] = [];
+
+    const ethPriceUSD = await this.sharedService.getEthPriceInUsd();
 
     for (const blockItem of blocks) {
       try {
@@ -106,14 +109,14 @@ export class AnalyticService {
           blockTag: blockItem.block,
         });
 
-        totalPrice = totalPrice.add(tokenEthPrice);
-        minPrice = tokenEthPrice.lt(minPrice) ? tokenEthPrice : minPrice;
-        maxPrice = tokenEthPrice.gt(maxPrice) ? tokenEthPrice : maxPrice;
+        const priceInEth = utils.formatEther(tokenEthPrice);
+        const priceInUsd = parseFloat(priceInEth) * ethPriceUSD;
 
         dataPoints.push({
           date: blockItem.date,
           timestamp: blockItem.timestamp,
-          price: utils.formatEther(tokenEthPrice),
+          price: priceInUsd.toString(),
+          priceInEth,
         });
       } catch (error) {
         this.logger.error(
@@ -124,13 +127,12 @@ export class AnalyticService {
     }
 
     const firstPrice = ethers.BigNumber.from(
-      utils.parseEther(dataPoints[0]?.price),
+      utils.parseEther(dataPoints[0]?.priceInEth),
     );
     const lastPrice = ethers.BigNumber.from(
-      utils.parseEther(dataPoints[dataPoints.length - 1]?.price),
+      utils.parseEther(dataPoints[dataPoints.length - 1]?.priceInEth),
     );
 
-    const averagePrice = totalPrice.div(dataPoints.length);
     const startPrice = firstPrice || ethers.BigNumber.from(0);
     const endPrice = lastPrice || ethers.BigNumber.from(0);
 
@@ -147,11 +149,6 @@ export class AnalyticService {
     }
 
     const result: PriceAnalytics = {
-      averagePrice: utils.formatEther(averagePrice),
-      minPrice: utils.formatEther(minPrice),
-      maxPrice: utils.formatEther(maxPrice),
-      priceAtStart: utils.formatEther(startPrice),
-      priceAtEnd: utils.formatEther(endPrice),
       percentageChange,
       isIncreased,
       dataPoints,
