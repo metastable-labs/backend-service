@@ -6,11 +6,11 @@ export enum ChannelSlug {
 
 
 export enum FarcasterActions {
-    FOLLOW_CHAN = "follow_chan", // FIX: rename to channel_follow
-    CAST = "casts" // FIX: rename to channel_casts
+    CHANNEL_FOLLOW = "channel_follow",
+    CHANNEL_CAST = "channel_cast"
 }
 
 
 export enum NFTActions {
-    OWN = "own" // FIX: rename to nft_own
+    OWN = "nft_own"
 }

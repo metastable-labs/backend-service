@@ -1758,13 +1758,13 @@ export class LaunchboxService {
             id: uuidv4(),
             name: "CAST",
             description: "User must cast in channel",
-            slug: FarcasterActions.CAST
+            slug: FarcasterActions.CHANNEL_CAST
           },
           {
             id: uuidv4(),
             name: "FOLLOW",
             description: "User must follow",
-            slug: FarcasterActions.FOLLOW_CHAN
+            slug: FarcasterActions.CHANNEL_FOLLOW
           },
         ]
       },
@@ -1812,7 +1812,7 @@ export class LaunchboxService {
 
           if (action.slug === NFTActions.OWN) {
             await this.processNFTAction(leaderboard, incentive, action, updatedParticipants);
-          } else if (action.slug === FarcasterActions.CAST || action.slug === FarcasterActions.FOLLOW_CHAN) {
+          } else if (action.slug === FarcasterActions.CHANNEL_CAST || action.slug === FarcasterActions.CHANNEL_FOLLOW) {
             await this.processFarcasterAction(leaderboard, incentive, action, launchbox, updatedParticipants);
           }
         }
