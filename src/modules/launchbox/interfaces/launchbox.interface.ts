@@ -25,6 +25,7 @@ export interface ILaunchboxTokenLeaderboard {
   created_at: Date;
   updated_at: Date;
   incentives: IIncentiveChannel[];
+
 }
 
 

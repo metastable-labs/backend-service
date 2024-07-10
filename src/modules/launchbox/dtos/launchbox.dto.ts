@@ -230,6 +230,13 @@ export class ActionsArrayDTO {
 }
 
 
+export class RemoveActionDTO {
+  @IsNotEmpty()
+  @IsString()
+  action_id: string;
+}
+
+
 export class PlayDTO {
   @IsNotEmpty()
   @IsEthereumAddress()

@@ -3,6 +3,7 @@ import {
   Body,
   ClassSerializerInterceptor,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -22,7 +23,7 @@ import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { env } from '../../common/config/env';
 
-import { ActionsArrayDTO, CreateDto, PaginateDto, PriceAnalyticQueryDto, UpdateDto, WebsiteBuilderDto } from './dtos/launchbox.dto';
+import { ActionsArrayDTO, CreateDto, PaginateDto, PriceAnalyticQueryDto, RemoveActionDTO, UpdateDto, WebsiteBuilderDto } from './dtos/launchbox.dto';
 
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
@@ -442,20 +443,39 @@ export class LaunchboxController {
 
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Get System default incentive channels',
+    description: 'Add Incentive Action to leaderboard',
   })
   @Post("/tokens/:id/incentives")
-  async activateIncentive(@Param('id') id: string, @Body() actions: ActionsArrayDTO) {
-    return this.launchboxService.addIncentiveAction(id, actions)
+  @UseGuards(LaunchboxAuthGuard)
+  async activateIncentive(
+    @Param('id') token_id: string,
+    @Body() actions: ActionsArrayDTO,
+    @Req() req: LaunchboxAuthRequest,
+  ) {
+    return this.launchboxService.addIncentiveAction(req.user, token_id, actions)
   }
 
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Remove Configured Incentive Action',
+  })
+  @Delete("/tokens/:id/incentives")
+  @UseGuards(LaunchboxAuthGuard)
+  async removeIncentive(
+    @Param('id') token_id: string,
+    @Body() { action_id }: RemoveActionDTO,
+    @Req() req: LaunchboxAuthRequest,
+  ) {
+    return this.launchboxService.removeIncentiveAction(req.user, token_id, action_id)
+  }
 
 
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Calculate Ranks',
   })
-  @Get("/tokens/calculate_rankings")
+  @Get("/calculate_rankings")
   async scoreParticipants() {
     return this.launchboxService.calculateRanks()
   }
@@ -465,6 +485,7 @@ export class LaunchboxController {
     description: 'Participate in activities to earn points',
   })
   @Post("/tokens/:id/earn")
+  @UseGuards(LaunchboxAuthGuard)
   async earnPoints(@Param('id') id: string, @Body() body: PlayDTO) {
     return this.launchboxService.earnPoints(id, body)
   }
