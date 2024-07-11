@@ -1,4 +1,6 @@
 import * as moment from 'moment';
+import * as crypto from 'crypto';
+import * as util from 'util';
 import {
   DateRange,
   PeriodKey,
@@ -7,6 +9,9 @@ import {
 import { ServiceError } from '../errors/service.error';
 import { HttpStatus, ValidationError } from '@nestjs/common';
 import { Period } from '../helpers/analytic/enums/analytic.enum';
+import { EncryptedData } from '../interfaces/index.interface';
+
+const pbkdf2 = util.promisify(crypto.pbkdf2);
 
 export const getEnvPath = () => {
   const env: string | undefined = process.env.NODE_ENV;
@@ -97,4 +102,57 @@ export const flattenValidationErrors = (
     }
     return acc;
   }, [] as string[]);
+};
+
+export const deriveKey = async (
+  password: string,
+  salt: Buffer,
+): Promise<Buffer> => {
+  return pbkdf2(password, salt, 100000, 32, 'sha512');
+};
+
+export const encrypt = async (
+  plaintext: string,
+  password: string,
+): Promise<EncryptedData> => {
+  const iv = crypto.randomBytes(12);
+  const salt = crypto.randomBytes(16);
+
+  const key = await deriveKey(password, salt);
+
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+
+  let encryptedText = cipher.update(plaintext, 'utf8', 'hex');
+  encryptedText += cipher.final('hex');
+
+  const authTag = cipher.getAuthTag();
+
+  return {
+    iv: iv.toString('hex'),
+    encryptedText: encryptedText,
+    salt: salt.toString('hex'),
+    authTag: authTag.toString('hex'),
+  };
+};
+
+export const decrypt = async (
+  encryptedData: EncryptedData,
+  password: string,
+): Promise<string> => {
+  const { iv, encryptedText, salt, authTag } = encryptedData;
+
+  const key = await deriveKey(password, Buffer.from(salt, 'hex'));
+
+  const decipher = crypto.createDecipheriv(
+    'aes-256-gcm',
+    key,
+    Buffer.from(iv, 'hex'),
+  );
+
+  decipher.setAuthTag(Buffer.from(authTag, 'hex'));
+
+  let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+
+  return decrypted;
 };
