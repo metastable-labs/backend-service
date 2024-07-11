@@ -1,16 +1,13 @@
 export enum ChannelSlug {
-    NFT = "nft",
-    FARCASTER = "farcaster"
+  NFT = 'nft',
+  FARCASTER = 'farcaster',
 }
-
-
 
 export enum FarcasterActions {
-    CHANNEL_FOLLOW = "channel_follow",
-    CHANNEL_CAST = "channel_cast"
+  CHANNEL_FOLLOW = 'channel_follow',
+  CHANNEL_CAST = 'channel_cast',
 }
 
-
 export enum NFTActions {
-    OWN = "nft_own"
+  OWN = 'nft_own',
 }

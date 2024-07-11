@@ -287,7 +287,7 @@ export class IncentiveChannel {
   @Column()
   slug: string;
 
-  @Column((type) => IncentiveAction)
+  @Column()
   actions: IncentiveAction[];
 }
 

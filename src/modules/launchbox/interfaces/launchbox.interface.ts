@@ -1,4 +1,3 @@
-
 export interface Chain {
   id: number;
   name: string;
@@ -15,7 +14,6 @@ export interface Social {
       url: string;
     };
   };
-
 }
 
 export interface ILaunchboxTokenLeaderboard {
@@ -25,10 +23,7 @@ export interface ILaunchboxTokenLeaderboard {
   created_at: Date;
   updated_at: Date;
   incentives: IIncentiveChannel[];
-
 }
-
-
 
 export interface IIncentiveChannel {
   id: string;
@@ -41,7 +36,7 @@ export interface IIncentiveAction {
   id: string;
   name: string;
   description: string;
-  points: number
+  points: number;
 }
 
 export interface ILeaderboardParticipant {
@@ -51,7 +46,6 @@ export interface ILeaderboardParticipant {
   created_at: Date;
   updated_at: Date;
   completed_actions: IIncentiveAction[];
-
 }
 
 interface Appearance {

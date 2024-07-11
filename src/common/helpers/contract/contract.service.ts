@@ -19,11 +19,7 @@ export class ContractService {
   }
 
   getContract(nftAddress: string): ethers.Contract {
-    return new ethers.Contract(
-      nftAddress,
-      NftAbi,
-      this.getProvider(),
-    );
+    return new ethers.Contract(nftAddress, NftAbi, this.getProvider());
   }
 
   getTokenTransferEventAbi() {

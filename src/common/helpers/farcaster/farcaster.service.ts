@@ -3,8 +3,14 @@ import Launchbox, { Channel } from 'channels-lib';
 import { getDateRangeFromKey, getDates, getPeriod } from 'src/common/utils';
 import { env } from '../../config/env';
 import { Period } from '../analytic/enums/analytic.enum';
-import { PeriodKey, PeriodType } from '../analytic/interfaces/analytic.interface';
-import { ChannelAnalytics, ChannelDataPoint } from './interfaces/farcaster.interface';
+import {
+  PeriodKey,
+  PeriodType,
+} from '../analytic/interfaces/analytic.interface';
+import {
+  ChannelAnalytics,
+  ChannelDataPoint,
+} from './interfaces/farcaster.interface';
 
 @Injectable()
 export class FarcasterService {

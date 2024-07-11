@@ -1297,9 +1297,9 @@ export class LaunchboxService {
         },
         relations: ['participants', 'incentives'],
       });
-      const { _id, ...data } = leaderboard!;
+      const { ...data } = leaderboard!;
 
-      let response: ILaunchboxTokenLeaderboard = {
+      const response: ILaunchboxTokenLeaderboard = {
         ...data,
         incentives: [],
       };
@@ -1317,7 +1317,7 @@ export class LaunchboxService {
                 (ac) => ac.id === cfg.action_id,
               );
               if (action) {
-                const { _id, ...clean } = channel;
+                const { ...clean } = channel;
                 return {
                   ...clean,
                   actions: [
@@ -1431,7 +1431,7 @@ export class LaunchboxService {
         throw new ServiceError('Token not found', HttpStatus.NOT_FOUND);
       }
 
-      let leaderboard = await this.leaderboardRepository.findOne({
+      const leaderboard = await this.leaderboardRepository.findOne({
         where: {
           token_id,
         },

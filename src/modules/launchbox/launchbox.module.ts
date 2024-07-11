@@ -23,7 +23,6 @@ import { AnalyticModule } from '../../common/helpers/analytic/analytic.module';
 import { PrivyModule } from '../../common/helpers/privy/privy.module';
 import { SharedModule } from '../../common/helpers/shared/shared.module';
 
-
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -35,7 +34,7 @@ import { SharedModule } from '../../common/helpers/shared/shared.module';
       IncentiveChannel,
       LeaderboardParticipant,
       TokenConfiguredAction,
-      LaunchboxUser
+      LaunchboxUser,
     ]),
     CloudinaryModule,
     FarcasterModule,
@@ -53,10 +52,9 @@ import { SharedModule } from '../../common/helpers/shared/shared.module';
   exports: [LaunchboxService],
 })
 export class LaunchboxModule implements OnModuleInit, OnApplicationBootstrap {
-  constructor(private readonly service: LaunchboxService) { }
+  constructor(private readonly service: LaunchboxService) {}
   async onModuleInit() {
-    await this.service.seedSystemChannels()
-
+    await this.service.seedSystemChannels();
   }
 
   async onApplicationBootstrap() {
@@ -64,5 +62,4 @@ export class LaunchboxModule implements OnModuleInit, OnApplicationBootstrap {
       await this.service.init();
     }
   }
-
 }

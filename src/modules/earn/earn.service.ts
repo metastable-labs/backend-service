@@ -35,7 +35,7 @@ export class EarnService {
     @InjectRepository(Multiplier)
     private readonly multiplierRepository: MongoRepository<Multiplier>,
     private readonly contractService: ContractService,
-  ) { }
+  ) {}
 
   async register(
     body: RegisterDto,
@@ -272,7 +272,10 @@ export class EarnService {
         throw new ServiceError('User not found', HttpStatus.NOT_FOUND);
       }
 
-      const balance = await this.contractService.getBalance(address, env.contract.nftAddress);
+      const balance = await this.contractService.getBalance(
+        address,
+        env.contract.nftAddress,
+      );
       if (balance === 0) {
         throw new ServiceError(
           'Not eligible for NFT earnings, please mint NFT first',
