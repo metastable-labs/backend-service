@@ -8,12 +8,13 @@ import {
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
+import { TransactionType } from '../enums/launchbox.enum';
 import {
   Chain,
   Social,
   WebsiteBuilder,
 } from '../interfaces/launchbox.interface';
-import { TransactionType } from '../enums/launchbox.enum';
 
 @Entity({
   name: 'launchbox_users',
@@ -199,4 +200,159 @@ export class LaunchboxTokenTransaction {
 
   @UpdateDateColumn()
   updated_at: Date;
+}
+
+class ActionMeta {
+  contract?: string;
+  channel?: string;
+}
+
+@Entity({
+  name: 'launchbox_token_leaderboard',
+})
+export class LaunchboxTokenLeaderboard {
+  @Exclude()
+  @ObjectIdColumn({ select: false })
+  _id: ObjectId;
+
+  @PrimaryColumn()
+  id: string;
+
+  @Column()
+  token_id: string;
+
+  @Column()
+  is_active: boolean;
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
+
+  @Column('jsonb', { array: true, default: [] })
+  incentives: TokenConfiguredAction[];
+
+  @Column('jsonb', { array: true, default: [] })
+  participants: LeaderboardParticipant[];
+}
+
+@Entity({
+  name: 'launchbox_token_leaderboard_actions',
+})
+export class TokenConfiguredAction {
+  @Exclude()
+  @ObjectIdColumn({ select: false })
+  _id: ObjectId;
+
+  @PrimaryColumn()
+  id: string;
+
+  @Column()
+  action_id: string;
+
+  @Column()
+  points: number;
+
+  @Column()
+  is_active: boolean;
+
+  @Column()
+  metadata: ActionMeta;
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
+}
+
+@Entity({
+  name: 'launchbox_incentive_channels',
+})
+export class IncentiveChannel {
+  @Exclude()
+  @ObjectIdColumn({ select: false })
+  _id: ObjectId;
+
+  @PrimaryColumn()
+  id: string;
+
+  @Column()
+  name: string;
+
+  @Column()
+  info: string;
+
+  @Column()
+  slug: string;
+
+  @Column()
+  actions: IncentiveAction[];
+}
+
+@Entity({
+  name: 'launchbox_incentive_actions',
+})
+export class IncentiveAction {
+  @Exclude()
+  @ObjectIdColumn({ select: false })
+  _id: ObjectId;
+
+  @PrimaryColumn()
+  id: string;
+
+  @Column()
+  name: string;
+
+  @Column()
+  description: string;
+
+  @Column()
+  channel_id: string;
+
+  @Column()
+  slug: string;
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
+}
+
+@Entity({
+  name: 'launchbox_token_leaderboard_participant',
+})
+export class LeaderboardParticipant {
+  @Exclude()
+  @ObjectIdColumn({ select: false })
+  _id: ObjectId;
+
+  @PrimaryColumn()
+  id: string;
+
+  @Column()
+  associated_address: string;
+
+  @Column()
+  leaderboard_id: string;
+
+  @Column()
+  farcaster_username: string;
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
+
+  @Column()
+  completed_actions: string[];
+
+  constructor(leaderboard_id: string, address: string) {
+    this.id = uuidv4();
+    this.leaderboard_id = leaderboard_id;
+    this.associated_address = address;
+  }
 }

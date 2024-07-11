@@ -1,21 +1,27 @@
-import { Module, OnApplicationBootstrap } from '@nestjs/common';
+import { Module, OnApplicationBootstrap, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { LaunchboxService } from './launchbox.service';
-import { LaunchboxController } from './launchbox.controller';
+import { env } from 'src/common/config/env';
+import { CloudinaryModule } from '../../common/helpers/cloudinary/cloudinary.module';
+import { ContractModule } from '../../common/helpers/contract/contract.module';
+import { FarcasterModule } from '../../common/helpers/farcaster/farcaster.module';
 import {
+  IncentiveAction,
+  IncentiveChannel,
   LaunchboxToken,
   LaunchboxTokenHolder,
+  LaunchboxTokenLeaderboard,
   LaunchboxTokenTransaction,
   LaunchboxUser,
+  LeaderboardParticipant,
+  TokenConfiguredAction,
 } from './entities/launchbox.entity';
-import { CloudinaryModule } from '../../common/helpers/cloudinary/cloudinary.module';
-import { FarcasterModule } from '../../common/helpers/farcaster/farcaster.module';
-import { ContractModule } from '../../common/helpers/contract/contract.module';
-import { SharedModule } from '../../common/helpers/shared/shared.module';
-import { AnalyticModule } from '../../common/helpers/analytic/analytic.module';
-import { env } from '../../common/config/env';
-import { PrivyModule } from '../../common/helpers/privy/privy.module';
+import { LaunchboxController } from './launchbox.controller';
+import { LaunchboxService } from './launchbox.service';
+
 import { JwtModule } from '@nestjs/jwt';
+import { AnalyticModule } from '../../common/helpers/analytic/analytic.module';
+import { PrivyModule } from '../../common/helpers/privy/privy.module';
+import { SharedModule } from '../../common/helpers/shared/shared.module';
 
 @Module({
   imports: [
@@ -23,6 +29,11 @@ import { JwtModule } from '@nestjs/jwt';
       LaunchboxToken,
       LaunchboxTokenHolder,
       LaunchboxTokenTransaction,
+      LaunchboxTokenLeaderboard,
+      IncentiveAction,
+      IncentiveChannel,
+      LeaderboardParticipant,
+      TokenConfiguredAction,
       LaunchboxUser,
     ]),
     CloudinaryModule,
@@ -40,12 +51,15 @@ import { JwtModule } from '@nestjs/jwt';
   controllers: [LaunchboxController],
   exports: [LaunchboxService],
 })
-export class LaunchboxModule implements OnApplicationBootstrap {
-  constructor(private readonly launchboxService: LaunchboxService) {}
+export class LaunchboxModule implements OnModuleInit, OnApplicationBootstrap {
+  constructor(private readonly service: LaunchboxService) {}
+  async onModuleInit() {
+    await this.service.seedSystemChannels();
+  }
 
   async onApplicationBootstrap() {
     if (env.isProduction) {
-      await this.launchboxService.init();
+      await this.service.init();
     }
   }
 }

@@ -1,3 +1,4 @@
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -11,8 +12,7 @@ import {
   IsUrl,
   ValidateNested,
 } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
-import { PeriodKey } from '../../../common/helpers/analytic/interfaces/analytic.interface';
+import { PeriodKey } from 'src/common/helpers/analytic/interfaces/analytic.interface';
 
 export class SocialDto {
   @IsNotEmpty()
@@ -121,7 +121,7 @@ export class UpdateDto {
   @IsOptional()
   @Type(() => SocialDto)
   @ValidateNested()
-  socials: Record<string, any>;
+  socials: { [key: string]: SocialDto };
 
   @IsOptional()
   @IsUrl({
@@ -177,6 +177,57 @@ export class PaginateDto {
   @IsString()
   @Transform(({ value }) => value.trim())
   search: string;
+}
+
+export class RankingPaginateDto {
+  @IsNotEmpty()
+  @IsNumber()
+  @Transform(({ value }) => parseInt(value.trim()))
+  limit: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  @Transform(({ value }) => parseInt(value.trim()))
+  page: number;
+}
+
+export class MetadataDTO {
+  @IsString()
+  @IsOptional()
+  contract?: string;
+
+  @IsString()
+  @IsOptional()
+  channel?: string;
+}
+
+export class ActionDTO {
+  @IsNotEmpty()
+  @IsString()
+  id: string;
+
+  @IsNotEmpty()
+  @IsNumber()
+  points: number;
+
+  @IsNotEmpty()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => MetadataDTO)
+  metadata: MetadataDTO;
+}
+
+export class ActionsArrayDTO {
+  @ValidateNested({ each: true })
+  @Type(() => ActionDTO)
+  @IsArray()
+  actions: ActionDTO[];
+}
+
+export class RemoveActionDTO {
+  @IsNotEmpty()
+  @IsString()
+  action_id: string;
 }
 
 export class PriceAnalyticQueryDto {

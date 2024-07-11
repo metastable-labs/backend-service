@@ -3,6 +3,7 @@ import {
   Body,
   ClassSerializerInterceptor,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -12,39 +13,43 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UploadedFile,
   UploadedFiles,
-  UseInterceptors,
-  Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { validateSync } from 'class-validator';
 import {
   FileFieldsInterceptor,
   FileInterceptor,
 } from '@nestjs/platform-express';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
-import { LaunchboxService } from './launchbox.service';
+import { env } from '../../common/config/env';
+
+import {
+  ActionsArrayDTO,
+  CreateDto,
+  PaginateDto,
+  PriceAnalyticQueryDto,
+  RemoveActionDTO,
+  UpdateDto,
+  WebsiteBuilderDto,
+} from './dtos/launchbox.dto';
+
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
+import { LaunchboxAuthGuard } from '../../common/guards/lauchbox.auth.guard';
+import { PrivyGuard } from '../../common/guards/privy.guard';
+import { LaunchboxAuthRequest } from '../../common/interfaces/request.interface';
+import { flattenValidationErrors } from '../../common/utils';
+import { FileMimes } from '../../common/enums/index.enum';
+import { ErrorResponse } from '../../common/responses';
 import {
   CustomUploadFileTypeValidator,
   ParseFilesPipe,
 } from '../../common/validators/file.validator';
-import { env } from '../../common/config/env';
-import {
-  CreateDto,
-  PaginateDto,
-  PriceAnalyticQueryDto,
-  UpdateDto,
-  WebsiteBuilderDto,
-} from './dtos/launchbox.dto';
-import { FileMimes } from '../../common/enums/index.enum';
-import { ErrorResponse } from '../../common/responses';
-import { plainToInstance } from 'class-transformer';
-import { flattenValidationErrors } from '../../common/utils';
-import { PrivyGuard } from '../../common/guards/privy.guard';
-import { LaunchboxAuthRequest } from '../../common/interfaces/request.interface';
-import { LaunchboxAuthGuard } from '../../common/guards/lauchbox.auth.guard';
+import { RankingPaginateDto } from './dtos/launchbox.dto';
+import { LaunchboxService } from './launchbox.service';
 
 @ApiTags('Launchbox')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -69,7 +74,7 @@ export class LaunchboxController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(PrivyGuard)
   @Post('auth')
-  async auth(@Req() request: Request) {
+  async auth(@Req() request: LaunchboxAuthRequest) {
     return this.launchboxService.authenticate(request.body.userId);
   }
 
@@ -419,5 +424,104 @@ export class LaunchboxController {
   @Get('/price')
   async getPrice() {
     return this.launchboxService.getCoinPrice();
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Get token leaderboard',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'An error occurred while fetching the leaderboard',
+    type: ErrorResponse,
+  })
+  @Get('/tokens/:id/ranking')
+  async getLeaderBoard(@Param('id') id: string) {
+    return this.launchboxService.getTokenLeaderBoard(id);
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Get System default incentive channels',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'An error occurred while fetching the channels',
+    type: ErrorResponse,
+  })
+  @Get('/incentive_channels')
+  async getSystemChannels() {
+    return this.launchboxService.getSystemChannels();
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Add Incentive Action to leaderboard',
+  })
+  @Post('/tokens/:id/incentives')
+  @UseGuards(LaunchboxAuthGuard)
+  async activateIncentive(
+    @Param('id') token_id: string,
+    @Body() actions: ActionsArrayDTO,
+    @Req() req: LaunchboxAuthRequest,
+  ) {
+    return this.launchboxService.addIncentiveAction(
+      req.user,
+      token_id,
+      actions,
+    );
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Remove Configured Incentive Action',
+  })
+  @Delete('/tokens/:id/incentives')
+  @UseGuards(LaunchboxAuthGuard)
+  async removeIncentive(
+    @Param('id') token_id: string,
+    @Body() { action_id }: RemoveActionDTO,
+    @Req() req: LaunchboxAuthRequest,
+  ) {
+    return this.launchboxService.removeIncentiveAction(
+      req.user,
+      token_id,
+      action_id,
+    );
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Calculate Ranks',
+  })
+  @Get('/calculate_rankings')
+  async scoreParticipants() {
+    return this.launchboxService.calculateRanks();
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Participate in activities to earn points',
+  })
+  @Post('/tokens/:id/earn')
+  @UseGuards(LaunchboxAuthGuard)
+  async earnPoints(@Req() req: LaunchboxAuthRequest, @Param('id') id: string) {
+    return this.launchboxService.earnPoints(req.user, id);
+  }
+
+  @Get('/tokens/:id/rank')
+  async getWalletRank(
+    @Param('id') id: string,
+    @Query('adddress') user_address: string,
+  ) {
+    return this.launchboxService.getRank(user_address, id);
+  }
+
+  @Get('/tokens/:id/leaderboard')
+  async getTokenLeaderboard(
+    @Param('id') id: string,
+    @Query() query: RankingPaginateDto,
+  ) {
+    return this.launchboxService.getAllRanking(id, query);
   }
 }

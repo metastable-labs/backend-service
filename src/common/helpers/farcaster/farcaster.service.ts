@@ -1,17 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
-import Launchbox from 'channels-lib';
-import { env } from '../../config/env';
-import {
-  Channel,
-  ChannelAnalytics,
-  ChannelDataPoint,
-} from './interfaces/farcaster.interface';
+import Launchbox, { Channel } from 'channels-lib';
 import { getDateRangeFromKey, getDates, getPeriod } from 'src/common/utils';
+import { env } from '../../config/env';
+import { Period } from '../analytic/enums/analytic.enum';
 import {
   PeriodKey,
   PeriodType,
 } from '../analytic/interfaces/analytic.interface';
-import { Period } from '../analytic/enums/analytic.enum';
+import {
+  ChannelAnalytics,
+  ChannelDataPoint,
+} from './interfaces/farcaster.interface';
 
 @Injectable()
 export class FarcasterService {

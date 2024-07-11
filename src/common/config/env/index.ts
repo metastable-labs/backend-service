@@ -1,5 +1,5 @@
-import * as envVar from 'env-var';
 import { config } from 'dotenv';
+import * as envVar from 'env-var';
 import { getEnvPath } from '../../utils/';
 
 const envPath = getEnvPath();
