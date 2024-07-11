@@ -10,7 +10,11 @@ import {
 } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { TransactionType } from '../enums/launchbox.enum';
-import { Chain, Social, WebsiteBuilder } from '../interfaces/launchbox.interface';
+import {
+  Chain,
+  Social,
+  WebsiteBuilder,
+} from '../interfaces/launchbox.interface';
 
 @Entity({
   name: 'launchbox_users',
@@ -45,7 +49,6 @@ export class LaunchboxUser {
   @UpdateDateColumn()
   updated_at: Date;
 }
-
 
 @Entity({
   name: 'launchbox_tokens',
@@ -205,7 +208,7 @@ class ActionMeta {
 }
 
 @Entity({
-  name: "launchbox_token_leaderboard"
+  name: 'launchbox_token_leaderboard',
 })
 export class LaunchboxTokenLeaderboard {
   @Exclude()
@@ -227,16 +230,15 @@ export class LaunchboxTokenLeaderboard {
   @UpdateDateColumn()
   updated_at: Date;
 
-  @Column("jsonb", { array: true, default: [] })
-  incentives: TokenConfiguredAction[]
+  @Column('jsonb', { array: true, default: [] })
+  incentives: TokenConfiguredAction[];
 
-  @Column("jsonb", { array: true, default: [] })
-  participants: LeaderboardParticipant[]
+  @Column('jsonb', { array: true, default: [] })
+  participants: LeaderboardParticipant[];
 }
 
-
 @Entity({
-  name: "launchbox_token_leaderboard_actions"
+  name: 'launchbox_token_leaderboard_actions',
 })
 export class TokenConfiguredAction {
   @Exclude()
@@ -253,11 +255,10 @@ export class TokenConfiguredAction {
   points: number;
 
   @Column()
-  is_active: boolean
-
+  is_active: boolean;
 
   @Column()
-  metadata: ActionMeta
+  metadata: ActionMeta;
 
   @CreateDateColumn()
   created_at: Date;
@@ -266,10 +267,8 @@ export class TokenConfiguredAction {
   updated_at: Date;
 }
 
-
-
 @Entity({
-  name: "launchbox_incentive_channels"
+  name: 'launchbox_incentive_channels',
 })
 export class IncentiveChannel {
   @Exclude()
@@ -279,10 +278,8 @@ export class IncentiveChannel {
   @PrimaryColumn()
   id: string;
 
-
   @Column()
   name: string;
-
 
   @Column()
   info: string;
@@ -290,14 +287,12 @@ export class IncentiveChannel {
   @Column()
   slug: string;
 
-
   @Column((type) => IncentiveAction)
-  actions: IncentiveAction[]
+  actions: IncentiveAction[];
 }
 
-
 @Entity({
-  name: "launchbox_incentive_actions"
+  name: 'launchbox_incentive_actions',
 })
 export class IncentiveAction {
   @Exclude()
@@ -314,10 +309,10 @@ export class IncentiveAction {
   description: string;
 
   @Column()
-  channel_id: string
+  channel_id: string;
 
   @Column()
-  slug: string
+  slug: string;
 
   @CreateDateColumn()
   created_at: Date;
@@ -326,9 +321,8 @@ export class IncentiveAction {
   updated_at: Date;
 }
 
-
 @Entity({
-  name: "launchbox_token_leaderboard_participant"
+  name: 'launchbox_token_leaderboard_participant',
 })
 export class LeaderboardParticipant {
   @Exclude()
@@ -345,7 +339,7 @@ export class LeaderboardParticipant {
   leaderboard_id: string;
 
   @Column()
-  farcaster_username: string
+  farcaster_username: string;
 
   @CreateDateColumn()
   created_at: Date;
@@ -354,13 +348,11 @@ export class LeaderboardParticipant {
   updated_at: Date;
 
   @Column()
-  completed_actions: string[]
+  completed_actions: string[];
 
-
-  constructor(leaderboard_id: string, username: string, address: string) {
-    this.id = uuidv4()
-    this.leaderboard_id = leaderboard_id
-    this.farcaster_username = username
-    this.associated_address = address
+  constructor(leaderboard_id: string, address: string) {
+    this.id = uuidv4();
+    this.leaderboard_id = leaderboard_id;
+    this.associated_address = address;
   }
 }

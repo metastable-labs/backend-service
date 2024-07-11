@@ -10,11 +10,9 @@ import {
   IsOptional,
   IsString,
   IsUrl,
-  ValidateNested
+  ValidateNested,
 } from 'class-validator';
 import { PeriodKey } from 'src/common/helpers/analytic/interfaces/analytic.interface';
-
-
 
 export class SocialDto {
   @IsNotEmpty()
@@ -125,7 +123,6 @@ export class UpdateDto {
   @ValidateNested()
   socials: { [key: string]: SocialDto };
 
-
   @IsOptional()
   @IsUrl({
     require_protocol: true,
@@ -180,19 +177,17 @@ export class PaginateDto {
   @IsString()
   @Transform(({ value }) => value.trim())
   search: string;
-
 }
-
 
 export class RankingPaginateDto {
   @IsNotEmpty()
   @IsNumber()
-  @Transform(({ value }) => (parseInt(value.trim())))
+  @Transform(({ value }) => parseInt(value.trim()))
   limit: number;
 
   @IsNotEmpty()
   @IsNumber()
-  @Transform(({ value }) => (parseInt(value.trim())))
+  @Transform(({ value }) => parseInt(value.trim()))
   page: number;
 }
 
@@ -229,24 +224,12 @@ export class ActionsArrayDTO {
   actions: ActionDTO[];
 }
 
-
 export class RemoveActionDTO {
   @IsNotEmpty()
   @IsString()
   action_id: string;
 }
 
-
-export class PlayDTO {
-  @IsNotEmpty()
-  @IsEthereumAddress()
-  @Transform(({ value }) => value.trim())
-  associated_address: string;
-
-
-  @IsNotEmpty()
-  farcaster_username: string
-}
 export class PriceAnalyticQueryDto {
   @IsNotEmpty()
   @IsString()
