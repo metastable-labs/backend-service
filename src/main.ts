@@ -1,7 +1,7 @@
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { HttpStatus, ValidationPipe, VersioningType } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import * as compression from 'compression';
@@ -50,8 +50,8 @@ async function bootstrap() {
   app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     console.log('App error', { err, req, res });
 
-    res.status(500).json({
-      statusCode: 500,
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       message: 'Internal server error, please try again later.',
       error: err.message,
     });
