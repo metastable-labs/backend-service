@@ -37,6 +37,7 @@ export interface IIncentiveAction {
   name: string;
   description: string;
   points: number;
+  metadata: { channel: string } | { contract: string };
 }
 
 export interface ILeaderboardParticipant {
