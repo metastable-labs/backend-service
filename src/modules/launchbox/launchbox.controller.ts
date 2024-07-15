@@ -38,12 +38,12 @@ import {
 
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
+import { FileMimes } from '../../common/enums/index.enum';
 import { LaunchboxAuthGuard } from '../../common/guards/lauchbox.auth.guard';
 import { PrivyGuard } from '../../common/guards/privy.guard';
 import { LaunchboxAuthRequest } from '../../common/interfaces/request.interface';
-import { flattenValidationErrors } from '../../common/utils';
-import { FileMimes } from '../../common/enums/index.enum';
 import { ErrorResponse } from '../../common/responses';
+import { flattenValidationErrors } from '../../common/utils';
 import {
   CustomUploadFileTypeValidator,
   ParseFilesPipe,
@@ -551,5 +551,23 @@ export class LaunchboxController {
     @Query() query: RankingPaginateDto,
   ) {
     return this.launchboxService.getAllRanking(id, query);
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Activate token leaderboard',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'An error occurred while fetching the leaderboard',
+    type: ErrorResponse,
+  })
+  @UseGuards(LaunchboxAuthGuard)
+  @Get('/tokens/:id/leaderboard')
+  async activateTokenLeaderboard(
+    @Req() req: LaunchboxAuthRequest,
+    @Param('id') id: string,
+  ) {
+    return this.launchboxService.activateLeaderboard(req.user, id);
   }
 }
