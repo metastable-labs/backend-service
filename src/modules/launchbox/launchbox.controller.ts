@@ -458,6 +458,11 @@ export class LaunchboxController {
     status: HttpStatus.OK,
     description: 'Add Incentive Action to leaderboard',
   })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'An error occurred while adding the incentive action',
+    type: ErrorResponse,
+  })
   @Post('/tokens/:id/incentives')
   @UseGuards(LaunchboxAuthGuard)
   async activateIncentive(
@@ -503,12 +508,26 @@ export class LaunchboxController {
     status: HttpStatus.OK,
     description: 'Participate in activities to earn points',
   })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'An error occurred while earning points',
+    type: ErrorResponse,
+  })
   @Post('/tokens/:id/earn')
   @UseGuards(LaunchboxAuthGuard)
   async earnPoints(@Req() req: LaunchboxAuthRequest, @Param('id') id: string) {
     return this.launchboxService.earnPoints(req.user, id);
   }
 
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Get wallet rank',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'An error occurred while fetching the rank',
+    type: ErrorResponse,
+  })
   @Get('/tokens/:id/rank')
   async getWalletRank(
     @Param('id') id: string,
@@ -517,6 +536,15 @@ export class LaunchboxController {
     return this.launchboxService.getRank(user_address, id);
   }
 
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Get token leaderboard',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'An error occurred while fetching the leaderboard',
+    type: ErrorResponse,
+  })
   @Get('/tokens/:id/leaderboard')
   async getTokenLeaderboard(
     @Param('id') id: string,
