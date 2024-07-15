@@ -241,8 +241,6 @@ export class LaunchboxTokenLeaderboard {
   name: 'launchbox_token_leaderboard_actions',
 })
 export class TokenConfiguredAction {
-  @Exclude()
-  @ObjectIdColumn({ select: false })
   _id: ObjectId;
 
   @PrimaryColumn()

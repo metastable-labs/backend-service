@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { User } from '@privy-io/server-auth';
 import { plainToInstance } from 'class-transformer';
@@ -39,7 +40,7 @@ import {
 
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import Launchbox, { Participant } from 'channels-lib';
+import Launchbox, { Cast, Participant } from 'channels-lib';
 import { env } from 'src/common/config/env';
 import { MongoRepository } from 'typeorm';
 import validator from 'validator';
@@ -82,12 +83,6 @@ export class LaunchboxService {
 
     @InjectRepository(LeaderboardParticipant)
     private readonly leaderboardParticipantRepository: MongoRepository<LeaderboardParticipant>,
-
-    @InjectRepository(TokenConfiguredAction)
-    private readonly tokenConfiguredActionRepository: MongoRepository<TokenConfiguredAction>,
-
-    @InjectRepository(IncentiveAction)
-    private readonly incentiveActionRepository: MongoRepository<IncentiveAction>,
 
     private readonly sharedService: SharedService,
     private readonly analyticService: AnalyticService,
@@ -1277,6 +1272,7 @@ export class LaunchboxService {
         where: {
           token_id: token.id,
         },
+        relations: ['participants', 'incentives'],
       });
 
       if (!leaderboard) {
@@ -1285,22 +1281,25 @@ export class LaunchboxService {
             is_active: true,
             token_id: token.id,
             id: uuidv4(),
-            incentives: [],
-            participants: [],
           }),
         );
+
+        leaderboard = await this.leaderboardRepository.findOne({
+          where: {
+            token_id: token.id,
+          },
+          relations: ['participants', 'incentives'],
+        });
       }
 
-      leaderboard = await this.leaderboardRepository.findOne({
-        where: {
-          token_id: token.id,
-        },
-        relations: ['participants', 'incentives'],
-      });
       const { ...data } = leaderboard!;
 
       const response: ILaunchboxTokenLeaderboard = {
-        ...data,
+        id: data.id,
+        token_id: data.token_id,
+        is_active: data.is_active,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
         incentives: [],
       };
 
@@ -1317,7 +1316,7 @@ export class LaunchboxService {
                 (ac) => ac.id === cfg.action_id,
               );
               if (action) {
-                const { ...clean } = channel;
+                const { _id, ...clean } = channel;
                 return {
                   ...clean,
                   actions: [
@@ -1701,6 +1700,19 @@ export class LaunchboxService {
             ch.actions.some((a) => a.id === action.id),
           );
 
+          if (leaderboard.incentives) {
+            const existing = leaderboard.incentives.find(
+              (a) => a.action_id == action.id,
+            );
+
+            if (existing) {
+              throw new ServiceError(
+                `Action Already Configured: ${action.id}`,
+                HttpStatus.BAD_REQUEST,
+              );
+            }
+          }
+
           if (!channel) {
             throw new ServiceError(
               `Invalid action ID: ${action.id}`,
@@ -1783,6 +1795,7 @@ export class LaunchboxService {
         where: {
           token_id,
         },
+        relations: ['incentives'],
       });
 
       if (!leaderboard) {
@@ -1792,12 +1805,15 @@ export class LaunchboxService {
       leaderboard.incentives = leaderboard.incentives.filter(
         (action) => action.action_id !== action_id,
       );
-      await this.leaderboardRepository.save(leaderboard);
+
+      await this.leaderboardRepository.updateOne(
+        { token_id: token.id },
+        { $set: { incentives: [...leaderboard.incentives] } },
+      );
 
       return successResponse({
         status: true,
         message: 'Action removed successfully',
-        data: leaderboard,
       });
     } catch (error) {
       this.logger.error(
@@ -1925,8 +1941,26 @@ export class LaunchboxService {
           }
         }
 
-        leaderboard.participants = updatedParticipants;
-        await this.leaderboardRepository.save(leaderboard);
+        const updatedParticipantsMap = new Map(
+          updatedParticipants.map((p) => [p.id, p]),
+        );
+
+        const updatedArray = leaderboard.participants.map((participant) => {
+          const update = updatedParticipantsMap.get(participant.id);
+          return update ? { ...participant, ...update } : participant;
+        });
+
+        const existingIds = new Set(leaderboard.participants.map((p) => p.id));
+        const newParticipants = updatedParticipants.filter(
+          (p) => !existingIds.has(p.id),
+        );
+
+        const finalParticipants = [...updatedArray, ...newParticipants];
+
+        await this.leaderboardRepository.updateOne(
+          { id: leaderboard.id },
+          { $set: { participants: finalParticipants } },
+        );
       }
     } catch (error) {
       this.logger.error('Error calculating ranks', error.stack);
@@ -1962,8 +1996,6 @@ export class LaunchboxService {
           updatedParticipant.completed_actions = [action.id];
         }
         updatedParticipants.push(updatedParticipant);
-      } else {
-        updatedParticipants.push(participant);
       }
     }
   }
@@ -1984,15 +2016,20 @@ export class LaunchboxService {
     const channelParticipants: Participant[] =
       await launchbox.getChannelParticipants(channelName);
 
+    const channelCasts: Cast[] = await launchbox.getChannelCasts(channelName);
+
     for (const participant of leaderboard.participants) {
       const updatedParticipant = { ...participant };
-      const matchingChannelParticipant = channelParticipants.find(
-        (cp) =>
-          cp.profileName.toLowerCase() ===
-          participant.farcaster_username.toLowerCase(),
+
+      const matchingChannelParticipant = channelParticipants.find((cp) =>
+        cp.addresses.includes(participant.associated_address),
       );
 
-      if (matchingChannelParticipant) {
+      const castByParticipant = channelCasts.find((cast) => {
+        return cast.castedBy.userAddress === participant.associated_address;
+      });
+
+      if (castByParticipant && action.slug === FarcasterActions.CHANNEL_CAST) {
         if (
           updatedParticipant.completed_actions &&
           !updatedParticipant.completed_actions.includes(action.id)
@@ -2001,9 +2038,25 @@ export class LaunchboxService {
         } else if (!updatedParticipant.completed_actions) {
           updatedParticipant.completed_actions = [action.id];
         }
+
+        updatedParticipants.push(updatedParticipant);
       }
 
-      updatedParticipants.push(updatedParticipant);
+      if (
+        matchingChannelParticipant &&
+        action.slug === FarcasterActions.CHANNEL_FOLLOW
+      ) {
+        if (
+          updatedParticipant.completed_actions &&
+          !updatedParticipant.completed_actions.includes(action.id)
+        ) {
+          updatedParticipant.completed_actions.push(action.id);
+        } else if (!updatedParticipant.completed_actions) {
+          updatedParticipant.completed_actions = [action.id];
+        }
+
+        updatedParticipants.push(updatedParticipant);
+      }
     }
   }
 
