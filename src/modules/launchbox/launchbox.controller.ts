@@ -12,6 +12,7 @@ import {
   ParseFilePipe,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UploadedFile,
@@ -563,7 +564,7 @@ export class LaunchboxController {
     type: ErrorResponse,
   })
   @UseGuards(LaunchboxAuthGuard)
-  @Get('/tokens/:id/leaderboard')
+  @Put('/tokens/:id/leaderboard/status')
   async activateTokenLeaderboard(
     @Req() req: LaunchboxAuthRequest,
     @Param('id') id: string,

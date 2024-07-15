@@ -34,6 +34,7 @@ import {
   NFTActions,
 } from './enums/leaderboard.enum';
 import {
+  IIncentiveAction,
   IIncentiveChannel,
   ILaunchboxTokenLeaderboard,
 } from './interfaces/launchbox.interface';
@@ -1305,29 +1306,42 @@ export class LaunchboxService {
 
       if (data.incentives && data.incentives.length >= 1) {
         const channels = await this.getSystemChannels();
-        response.incentives = data.incentives
-          .map((cfg) => {
-            const channel = channels.find((ch) =>
-              ch.actions.some((ac) => ac.id === cfg.action_id),
-            );
 
-            if (channel) {
-              const action = channel.actions.find(
-                (ac) => ac.id === cfg.action_id,
-              );
-              if (action) {
-                const { _id, ...clean } = channel;
-                return {
+        const incentiveMap = new Map<string, IIncentiveChannel>();
+
+        data.incentives.forEach((cfg) => {
+          const channel = channels.find((ch) =>
+            ch.actions.some((ac) => ac.id === cfg.action_id),
+          );
+
+          if (channel) {
+            const action = channel.actions.find(
+              (ac) => ac.id === cfg.action_id,
+            );
+            if (action) {
+              const { _id, ...clean } = channel;
+              const newAction: IIncentiveAction = {
+                ...action,
+                points: cfg.points,
+                metadata: cfg.metadata,
+              } as unknown as IIncentiveAction;
+
+              if (incentiveMap.has(clean.name)) {
+                incentiveMap.get(clean.name)!.actions.push(newAction);
+              } else {
+                // If it's a new incentive, create a new entry in the map
+                incentiveMap.set(clean.name, {
                   ...clean,
-                  actions: [
-                    { ...action, points: cfg.points, metadata: cfg.metadata },
-                  ],
-                };
+                  actions: [newAction],
+                });
               }
             }
-            return null;
-          })
-          .filter((i) => i !== null) as unknown as IIncentiveChannel[];
+          }
+        });
+
+        response.incentives = Array.from(
+          incentiveMap.values(),
+        ) as IIncentiveChannel[];
       }
 
       return successResponse({
@@ -1392,11 +1406,25 @@ export class LaunchboxService {
             },
           },
         );
+      } else {
+        await this.leaderboardRepository.updateOne(
+          { token_id },
+          {
+            $set: {
+              is_active: false,
+            },
+          },
+        );
       }
+
       return successResponse({
         status: true,
         message: 'Token casts fetched successfully',
-        data: leaderboard,
+        data: {
+          id: leaderboard.id,
+          token_id: leaderboard.token_id,
+          is_active: !leaderboard.is_active,
+        },
       });
     } catch (error) {
       this.logger.error(
