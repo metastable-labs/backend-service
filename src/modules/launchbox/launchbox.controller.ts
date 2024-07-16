@@ -29,12 +29,14 @@ import { env } from '../../common/config/env';
 
 import {
   ActionsArrayDTO,
+  CreateApiKeyDto,
   CreateDto,
   PaginateDto,
   PriceAnalyticQueryDto,
   RemoveActionDTO,
   UpdateDto,
   WebsiteBuilderDto,
+  RankingPaginateDto,
 } from './dtos/launchbox.dto';
 
 import { plainToInstance } from 'class-transformer';
@@ -49,8 +51,9 @@ import {
   CustomUploadFileTypeValidator,
   ParseFilesPipe,
 } from '../../common/validators/file.validator';
-import { RankingPaginateDto } from './dtos/launchbox.dto';
 import { LaunchboxService } from './launchbox.service';
+import { AdminGuard } from '../../common/guards/admin.guard';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('Launchbox')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -114,7 +117,7 @@ export class LaunchboxController {
     description: 'Token already exists',
     type: ErrorResponse,
   })
-  @UseGuards(LaunchboxAuthGuard)
+  @UseGuards(AuthGuard(['launchbox-auth', 'api-key']))
   @UseInterceptors(FileInterceptor('logo'))
   @Post('/tokens')
   async create(
@@ -570,5 +573,21 @@ export class LaunchboxController {
     @Param('id') id: string,
   ) {
     return this.launchboxService.activateLeaderboard(req.user, id);
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Create API key',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'An error occurred while creating the API key',
+    type: ErrorResponse,
+  })
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminGuard)
+  @Post('/admin/api-keys')
+  async createApiKey(@Body() body: CreateApiKeyDto) {
+    return this.launchboxService.createApiKey(body);
   }
 }

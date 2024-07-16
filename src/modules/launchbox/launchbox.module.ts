@@ -1,12 +1,13 @@
 import { Module, OnApplicationBootstrap, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { env } from 'src/common/config/env';
+import { env } from '../../common/config/env';
 import { CloudinaryModule } from '../../common/helpers/cloudinary/cloudinary.module';
 import { ContractModule } from '../../common/helpers/contract/contract.module';
 import { FarcasterModule } from '../../common/helpers/farcaster/farcaster.module';
 import {
   IncentiveAction,
   IncentiveChannel,
+  LaunchboxApiCredential,
   LaunchboxToken,
   LaunchboxTokenHolder,
   LaunchboxTokenLeaderboard,
@@ -22,6 +23,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { AnalyticModule } from '../../common/helpers/analytic/analytic.module';
 import { PrivyModule } from '../../common/helpers/privy/privy.module';
 import { SharedModule } from '../../common/helpers/shared/shared.module';
+import { LaunchboxAuthStrategy } from '../../common/strategies/lauchbox.auth.strategy';
+import { ApiKeyStrategy } from '../../common/strategies/api-key.strategy';
 
 @Module({
   imports: [
@@ -35,6 +38,7 @@ import { SharedModule } from '../../common/helpers/shared/shared.module';
       LeaderboardParticipant,
       TokenConfiguredAction,
       LaunchboxUser,
+      LaunchboxApiCredential,
     ]),
     CloudinaryModule,
     FarcasterModule,
@@ -47,7 +51,7 @@ import { SharedModule } from '../../common/helpers/shared/shared.module';
       signOptions: { expiresIn: env.jwt.expiresIn },
     }),
   ],
-  providers: [LaunchboxService],
+  providers: [LaunchboxService, LaunchboxAuthStrategy, ApiKeyStrategy],
   controllers: [LaunchboxController],
   exports: [LaunchboxService],
 })
@@ -58,8 +62,8 @@ export class LaunchboxModule implements OnModuleInit, OnApplicationBootstrap {
   }
 
   async onApplicationBootstrap() {
-    if (env.isProduction) {
-      await this.service.init();
-    }
+    //if (env.isProduction) {
+    await this.service.init();
+    //}
   }
 }

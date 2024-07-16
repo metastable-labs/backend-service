@@ -399,3 +399,9 @@ export class WebsiteBuilderDto {
   )
   footer: FooterDto;
 }
+
+export class CreateApiKeyDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+}

@@ -15,6 +15,7 @@ import {
   Social,
   WebsiteBuilder,
 } from '../interfaces/launchbox.interface';
+import { EncryptedData } from '../../../common/interfaces/index.interface';
 
 @Entity({
   name: 'launchbox_users',
@@ -48,6 +49,9 @@ export class LaunchboxUser {
 
   @UpdateDateColumn()
   updated_at: Date;
+
+  externalApiCall?: boolean;
+  apiCredential?: LaunchboxApiCredential;
 }
 
 @Entity({
@@ -353,4 +357,37 @@ export class LeaderboardParticipant {
     this.leaderboard_id = leaderboard_id;
     this.associated_address = address;
   }
+}
+
+@Entity({
+  name: 'launchbox_api_credentials',
+})
+export class LaunchboxApiCredential {
+  @Exclude()
+  @ObjectIdColumn({ select: false })
+  _id: ObjectId;
+
+  @PrimaryColumn()
+  id: string;
+
+  @Column()
+  name: string;
+
+  @Column()
+  key: EncryptedData;
+
+  @Column()
+  hash: string;
+
+  @Column()
+  is_active: boolean;
+
+  @Column()
+  revoked_at: Date;
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
 }
