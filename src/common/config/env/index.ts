@@ -73,4 +73,7 @@ export const env = {
   encryption: {
     key: envVar.get('ENCRYPTION_KEY').required().asString(),
   },
+  admin: {
+    key: envVar.get('ADMIN_KEY').required().asString(),
+  },
 };
