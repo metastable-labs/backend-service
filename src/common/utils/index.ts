@@ -1,13 +1,14 @@
 import * as moment from 'moment';
 import * as crypto from 'crypto';
 import * as util from 'util';
+import { HttpStatus, ValidationError } from '@nestjs/common';
+
 import {
   DateRange,
   PeriodKey,
   PeriodType,
 } from '../helpers/analytic/interfaces/analytic.interface';
 import { ServiceError } from '../errors/service.error';
-import { HttpStatus, ValidationError } from '@nestjs/common';
 import { Period } from '../helpers/analytic/enums/analytic.enum';
 import { EncryptedData } from '../interfaces/index.interface';
 
@@ -155,4 +156,22 @@ export const decrypt = async (
   decrypted += decipher.final('utf8');
 
   return decrypted;
+};
+
+export const hashKey = (str: string): string => {
+  return crypto.createHash('sha256').update(str).digest('hex');
+};
+
+export const generateKey = (length: number): string => {
+  const charset =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+  const randomBytes = crypto.randomBytes(length);
+
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += charset[randomBytes[i] % charset.length];
+  }
+
+  return result;
 };
