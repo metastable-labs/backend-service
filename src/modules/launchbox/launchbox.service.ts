@@ -1262,11 +1262,6 @@ export class LaunchboxService {
 
       if (!token) {
         throw new ServiceError('Token not found', HttpStatus.NOT_FOUND);
-      } else if (!token.socials?.warpcast?.channel?.url) {
-        throw new ServiceError(
-          'Token does not have a connected channel',
-          HttpStatus.BAD_REQUEST,
-        );
       }
 
       let leaderboard = await this.leaderboardRepository.findOne({
