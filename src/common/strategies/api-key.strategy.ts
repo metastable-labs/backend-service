@@ -23,19 +23,9 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
     done: verify,
     req: LaunchboxAuthRequest,
   ): Promise<any> {
-    if (req.user) {
-      return done(null, req.user, null);
-    }
-
     try {
-      if (!key) {
-        return done(
-          new UnauthorizedException(
-            'Unsupported request, Please read our API documentation',
-          ),
-          false,
-          null,
-        );
+      if (req?.user) {
+        return done(null, req.user, null);
       }
 
       const apiCredential = await this.launchboxService.validateApiKey(key);
