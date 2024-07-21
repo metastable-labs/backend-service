@@ -218,12 +218,11 @@ export class LaunchboxService {
 
       const fetchedUser = await this.fetchOrCreateUser(
         user,
-        user.wallet_address ?? formattedChain.deployer_address,
+        formattedChain.transaction_hash,
       );
 
       const tokenExists = await this.launchboxTokenRepository.findOne({
         where: {
-          user_id: fetchedUser.id,
           token_address: body.token_address,
           'chain.id': formattedChain.id,
         },
@@ -248,13 +247,17 @@ export class LaunchboxService {
         token_decimals: Number(body.token_decimals),
         token_total_supply: Number(body.token_total_supply),
         create_token_page: body.create_token_page === 'true',
-        chain: { ...formattedChain, deployer_address: user.wallet_address },
+        chain: {
+          ...formattedChain,
+          deployer_address: fetchedUser.wallet_address,
+        },
         socials: {
           warpcast: { channel: formattedSocials },
         },
         token_logo_url: logoUrl,
         is_active: true,
-        user_id: user.id,
+        user_id: fetchedUser.id,
+        reference: user?.apiCredential?.id,
       });
 
       await this.launchboxTokenRepository.save(launchbox);
@@ -335,10 +338,20 @@ export class LaunchboxService {
     }
   }
 
-  async findAll(query: PaginateDto): Promise<IResponse | ServiceError> {
+  async findAll(
+    apiKey: string,
+    query: PaginateDto,
+  ): Promise<IResponse | ServiceError> {
     try {
+      let apiCredential: LaunchboxApiCredential | undefined;
+
+      if (apiKey) {
+        apiCredential = await this.validateApiKey(apiKey);
+      }
+
       const totalTokensCount = await this.launchboxTokenRepository.count({
         is_active: true,
+        ...(apiCredential?.id && { reference: apiCredential?.id }),
       });
 
       let queryOptions = {};
@@ -347,10 +360,16 @@ export class LaunchboxService {
         queryOptions = {
           'chain.deployer_address': query.deployer_address,
           is_active: true,
+          ...(apiCredential?.id && {
+            reference: apiCredential?.id,
+          }),
         };
       } else if (query.search) {
         queryOptions = {
           is_active: true,
+          ...(apiCredential?.id && {
+            reference: apiCredential?.id,
+          }),
           $or: [
             {
               token_name: { $regex: query.search, $options: 'i' },
@@ -364,9 +383,14 @@ export class LaunchboxService {
           ],
         };
       } else {
-        queryOptions = {
-          is_active: true,
-        };
+        queryOptions = apiCredential?.id
+          ? {
+              is_active: true,
+              reference: apiCredential?.id,
+            }
+          : {
+              is_active: true,
+            };
       }
 
       const launchboxTokens = await this.launchboxTokenRepository.find({
@@ -1092,42 +1116,24 @@ export class LaunchboxService {
     }
   }
 
-  async validateApiKey(
-    key: string,
-  ): Promise<LaunchboxApiCredential | ServiceError> {
-    try {
-      const apiKeyHash = hashKey(key);
-      const apiKey = await this.launchboxApiKeyRepository.findOne({
-        where: { hash: apiKeyHash, is_active: true },
-      });
+  async validateApiKey(key: string): Promise<LaunchboxApiCredential> {
+    const apiKeyHash = hashKey(key);
+    const apiKey = await this.launchboxApiKeyRepository.findOne({
+      where: { hash: apiKeyHash, is_active: true },
+    });
 
-      if (!apiKey) {
-        throw new ServiceError('Unauthorized', HttpStatus.UNAUTHORIZED);
-      }
-
-      const decryptedKey = await decrypt(apiKey.key, env.encryption.key);
-      const decryptedKeyHash = hashKey(decryptedKey);
-
-      if (decryptedKeyHash !== apiKeyHash) {
-        throw new ServiceError('Unauthorized', HttpStatus.UNAUTHORIZED);
-      }
-
-      return apiKey;
-    } catch (error) {
-      this.logger.error(
-        'An error occurred while validating the API key.',
-        error.stack,
-      );
-
-      if (error instanceof ServiceError) {
-        return error.toErrorResponse();
-      }
-
-      throw new ServiceError(
-        'An error occurred while validating the API key. Please try again later.',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      ).toErrorResponse();
+    if (!apiKey) {
+      throw new ServiceError('Unauthorized', HttpStatus.UNAUTHORIZED);
     }
+
+    const decryptedKey = await decrypt(apiKey.key, env.encryption.key);
+    const decryptedKeyHash = hashKey(decryptedKey);
+
+    if (decryptedKeyHash !== apiKeyHash) {
+      throw new ServiceError('Unauthorized', HttpStatus.UNAUTHORIZED);
+    }
+
+    return apiKey;
   }
 
   private async getEthPriceInUsd(): Promise<number> {
