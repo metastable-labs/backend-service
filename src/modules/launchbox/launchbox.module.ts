@@ -62,8 +62,8 @@ export class LaunchboxModule implements OnModuleInit, OnApplicationBootstrap {
   }
 
   async onApplicationBootstrap() {
-    //if (env.isProduction) {
-    await this.service.init();
-    //}
+    if (env.isProduction) {
+      await this.service.init();
+    }
   }
 }

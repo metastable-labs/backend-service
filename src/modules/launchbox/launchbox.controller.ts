@@ -25,8 +25,10 @@ import {
   FileInterceptor,
 } from '@nestjs/platform-express';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
 import { env } from '../../common/config/env';
-
 import {
   ActionsArrayDTO,
   CreateApiKeyDto,
@@ -38,9 +40,6 @@ import {
   WebsiteBuilderDto,
   RankingPaginateDto,
 } from './dtos/launchbox.dto';
-
-import { plainToInstance } from 'class-transformer';
-import { validateSync } from 'class-validator';
 import { FileMimes } from '../../common/enums/index.enum';
 import { LaunchboxAuthGuard } from '../../common/guards/lauchbox.auth.guard';
 import { PrivyGuard } from '../../common/guards/privy.guard';
@@ -53,7 +52,7 @@ import {
 } from '../../common/validators/file.validator';
 import { LaunchboxService } from './launchbox.service';
 import { AdminGuard } from '../../common/guards/admin.guard';
-import { AuthGuard } from '@nestjs/passport';
+import { Request } from 'express';
 
 @ApiTags('Launchbox')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -156,8 +155,10 @@ export class LaunchboxController {
     type: ErrorResponse,
   })
   @Get('/tokens')
-  async findAll(@Query() query: PaginateDto) {
-    return this.launchboxService.findAll(query);
+  async findAll(@Req() req: Request, @Query() query: PaginateDto) {
+    const apiKey = req.headers['x-api-key'] as string;
+
+    return this.launchboxService.findAll(apiKey, query);
   }
 
   @ApiResponse({
