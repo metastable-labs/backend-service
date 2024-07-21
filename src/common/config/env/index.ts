@@ -70,4 +70,10 @@ export const env = {
     appId: envVar.get('PRIVY_APP_ID').required().asString(),
     appSecret: envVar.get('PRIVY_APP_SECRET').required().asString(),
   },
+  encryption: {
+    key: envVar.get('ENCRYPTION_KEY').required().asString(),
+  },
+  admin: {
+    key: envVar.get('ADMIN_KEY').required().asString(),
+  },
 };

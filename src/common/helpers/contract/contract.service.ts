@@ -98,4 +98,12 @@ export class ContractService {
       tokenEthLiquidity: ethers.utils.formatEther(tokenEthLiquidityValue),
     };
   }
+
+  async getTokenDeployerAddress(hash: string): Promise<string> {
+    const provider = this.getProvider();
+    const transaction = await provider.getTransaction(hash);
+    await transaction.wait();
+
+    return transaction.from;
+  }
 }

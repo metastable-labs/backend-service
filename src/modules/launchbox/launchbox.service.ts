@@ -10,6 +10,7 @@ import { successResponse } from '../../common/responses/success.helper';
 import {
   ActionsArrayDTO,
   ChainDto,
+  CreateApiKeyDto,
   CreateDto,
   PaginateDto,
   RankingPaginateDto,
@@ -20,6 +21,7 @@ import {
 import {
   IncentiveAction,
   IncentiveChannel,
+  LaunchboxApiCredential,
   LaunchboxToken,
   LaunchboxTokenHolder,
   LaunchboxTokenLeaderboard,
@@ -37,6 +39,7 @@ import {
   IIncentiveAction,
   IIncentiveChannel,
   ILaunchboxTokenLeaderboard,
+  Chain,
 } from './interfaces/launchbox.interface';
 
 import { JwtService } from '@nestjs/jwt';
@@ -53,13 +56,18 @@ import { FarcasterService } from '../../common/helpers/farcaster/farcaster.servi
 import { PrivyService } from '../../common/helpers/privy/privy.service';
 import { SharedService } from '../../common/helpers/shared/shared.service';
 import { IResponse } from '../../common/interfaces/response.interface';
-import { getDateRangeFromKey } from '../../common/utils';
+import {
+  decrypt,
+  encrypt,
+  generateKey,
+  getDateRangeFromKey,
+  hashKey,
+} from '../../common/utils';
 import {
   Currency,
   FileUploadFolder,
   TransactionType,
 } from './enums/launchbox.enum';
-import { Chain } from './interfaces/launchbox.interface';
 
 @Injectable()
 export class LaunchboxService {
@@ -70,21 +78,19 @@ export class LaunchboxService {
     private readonly launchboxTokenHolderRepository: MongoRepository<LaunchboxTokenHolder>,
     @InjectRepository(LaunchboxTokenTransaction)
     private readonly launchboxTokenTransactionRepository: MongoRepository<LaunchboxTokenTransaction>,
+    @InjectRepository(LaunchboxTokenLeaderboard)
+    private readonly leaderboardRepository: MongoRepository<LaunchboxTokenLeaderboard>,
+    @InjectRepository(IncentiveChannel)
+    private readonly incentiveChannelRespository: MongoRepository<IncentiveChannel>,
+    @InjectRepository(LeaderboardParticipant)
+    private readonly leaderboardParticipantRepository: MongoRepository<LeaderboardParticipant>,
     @InjectRepository(LaunchboxUser)
     private readonly launchboxUserRepository: MongoRepository<LaunchboxUser>,
+    @InjectRepository(LaunchboxApiCredential)
+    private readonly launchboxApiKeyRepository: MongoRepository<LaunchboxApiCredential>,
     private readonly cloudinaryService: CloudinaryService,
     private readonly farcasterService: FarcasterService,
     private readonly contractService: ContractService,
-
-    @InjectRepository(LaunchboxTokenLeaderboard)
-    private readonly leaderboardRepository: MongoRepository<LaunchboxTokenLeaderboard>,
-
-    @InjectRepository(IncentiveChannel)
-    private readonly incentiveChannelRespository: MongoRepository<IncentiveChannel>,
-
-    @InjectRepository(LeaderboardParticipant)
-    private readonly leaderboardParticipantRepository: MongoRepository<LeaderboardParticipant>,
-
     private readonly sharedService: SharedService,
     private readonly analyticService: AnalyticService,
     private readonly privyService: PrivyService,
@@ -210,9 +216,13 @@ export class LaunchboxService {
         this.validateBodySocial(formattedSocials);
       }
 
+      const fetchedUser = await this.fetchOrCreateUser(
+        user,
+        formattedChain.transaction_hash,
+      );
+
       const tokenExists = await this.launchboxTokenRepository.findOne({
         where: {
-          user_id: user.id,
           token_address: body.token_address,
           'chain.id': formattedChain.id,
         },
@@ -237,13 +247,17 @@ export class LaunchboxService {
         token_decimals: Number(body.token_decimals),
         token_total_supply: Number(body.token_total_supply),
         create_token_page: body.create_token_page === 'true',
-        chain: { ...formattedChain, deployer_address: user.wallet_address },
+        chain: {
+          ...formattedChain,
+          deployer_address: fetchedUser.wallet_address,
+        },
         socials: {
           warpcast: { channel: formattedSocials },
         },
         token_logo_url: logoUrl,
         is_active: true,
-        user_id: user.id,
+        user_id: fetchedUser.id,
+        reference: user?.apiCredential?.id,
       });
 
       await this.launchboxTokenRepository.save(launchbox);
@@ -324,10 +338,20 @@ export class LaunchboxService {
     }
   }
 
-  async findAll(query: PaginateDto): Promise<IResponse | ServiceError> {
+  async findAll(
+    apiKey: string,
+    query: PaginateDto,
+  ): Promise<IResponse | ServiceError> {
     try {
+      let apiCredential: LaunchboxApiCredential | undefined;
+
+      if (apiKey) {
+        apiCredential = await this.validateApiKey(apiKey);
+      }
+
       const totalTokensCount = await this.launchboxTokenRepository.count({
         is_active: true,
+        ...(apiCredential?.id && { reference: apiCredential?.id }),
       });
 
       let queryOptions = {};
@@ -336,10 +360,16 @@ export class LaunchboxService {
         queryOptions = {
           'chain.deployer_address': query.deployer_address,
           is_active: true,
+          ...(apiCredential?.id && {
+            reference: apiCredential?.id,
+          }),
         };
       } else if (query.search) {
         queryOptions = {
           is_active: true,
+          ...(apiCredential?.id && {
+            reference: apiCredential?.id,
+          }),
           $or: [
             {
               token_name: { $regex: query.search, $options: 'i' },
@@ -353,9 +383,14 @@ export class LaunchboxService {
           ],
         };
       } else {
-        queryOptions = {
-          is_active: true,
-        };
+        queryOptions = apiCredential?.id
+          ? {
+              is_active: true,
+              reference: apiCredential?.id,
+            }
+          : {
+              is_active: true,
+            };
       }
 
       const launchboxTokens = await this.launchboxTokenRepository.find({
@@ -1042,6 +1077,63 @@ export class LaunchboxService {
         );
       },
     );
+  }
+
+  async createApiKey(body: CreateApiKeyDto): Promise<IResponse | ServiceError> {
+    try {
+      const key = generateKey(64);
+      const encryptedKey = await encrypt(key, env.encryption.key);
+      const hash = hashKey(key);
+
+      const apiKey = this.launchboxApiKeyRepository.create({
+        id: uuidv4(),
+        name: body.name,
+        key: encryptedKey,
+        hash,
+        is_active: true,
+      });
+
+      await this.launchboxApiKeyRepository.save(apiKey);
+
+      return successResponse({
+        status: true,
+        message: 'API key created successfully',
+        data: {
+          key,
+        },
+      });
+    } catch (error) {
+      this.logger.error('An error occurred while creating the API key.', error);
+
+      if (error instanceof ServiceError) {
+        return error.toErrorResponse();
+      }
+
+      throw new ServiceError(
+        'An error occurred while creating the API key. Please try again later.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      ).toErrorResponse();
+    }
+  }
+
+  async validateApiKey(key: string): Promise<LaunchboxApiCredential> {
+    const apiKeyHash = hashKey(key);
+    const apiKey = await this.launchboxApiKeyRepository.findOne({
+      where: { hash: apiKeyHash, is_active: true },
+    });
+
+    if (!apiKey) {
+      throw new ServiceError('Unauthorized', HttpStatus.UNAUTHORIZED);
+    }
+
+    const decryptedKey = await decrypt(apiKey.key, env.encryption.key);
+    const decryptedKeyHash = hashKey(decryptedKey);
+
+    if (decryptedKeyHash !== apiKeyHash) {
+      throw new ServiceError('Unauthorized', HttpStatus.UNAUTHORIZED);
+    }
+
+    return apiKey;
   }
 
   private async getEthPriceInUsd(): Promise<number> {
@@ -2239,5 +2331,38 @@ export class LaunchboxService {
       'No valid authentication method found',
       HttpStatus.BAD_REQUEST,
     );
+  }
+
+  private async fetchOrCreateUser(
+    user: LaunchboxUser,
+    transactionHash: string,
+  ): Promise<LaunchboxUser> {
+    if (!user.externalApiCall) {
+      return user;
+    }
+
+    const deployerAddress =
+      await this.contractService.getTokenDeployerAddress(transactionHash);
+
+    const userExists = await this.launchboxUserRepository.findOne({
+      where: {
+        wallet_address: deployerAddress,
+      },
+    });
+
+    if (userExists) {
+      return userExists;
+    }
+
+    const newUser = this.launchboxUserRepository.create({
+      id: uuidv4(),
+      reference: user.apiCredential?.id,
+      auth_id: user.apiCredential?.id,
+      auth_type: 'api-key',
+      wallet_address: deployerAddress,
+      is_active: true,
+    });
+
+    return this.launchboxUserRepository.save(newUser);
   }
 }
