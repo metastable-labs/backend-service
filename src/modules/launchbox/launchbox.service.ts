@@ -294,7 +294,12 @@ export class LaunchboxService {
   ): Promise<IResponse | ServiceError> {
     try {
       const token = await this.launchboxTokenRepository.findOne({
-        where: { id, user_id: user.id },
+        where: {
+          id,
+          ...(user.externalApiCall
+            ? { reference: user.apiCredential?.id }
+            : { user_id: user.id }),
+        },
       });
 
       if (!token) {
@@ -311,6 +316,7 @@ export class LaunchboxService {
             telegram_url: body.telegram_url,
             twitter_url: body.twitter_url,
             create_token_page: body.create_token_page,
+            website_url: body.website_url,
           },
         },
       );
