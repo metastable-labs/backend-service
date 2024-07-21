@@ -102,6 +102,7 @@ export class ContractService {
   async getTokenDeployerAddress(hash: string): Promise<string> {
     const provider = this.getProvider();
     const transaction = await provider.getTransaction(hash);
+    await transaction.wait();
 
     return transaction.from;
   }
