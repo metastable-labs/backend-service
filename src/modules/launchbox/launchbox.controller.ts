@@ -176,7 +176,7 @@ export class LaunchboxController {
     description: 'Token not found',
     type: ErrorResponse,
   })
-  @UseGuards(LaunchboxAuthGuard)
+  @UseGuards(AuthGuard(['launchbox-auth', 'api-key']))
   @Patch('/tokens/:id')
   async updateOne(
     @Req() req: LaunchboxAuthRequest,

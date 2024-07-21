@@ -85,10 +85,10 @@ export class CreateDto {
   @IsString()
   token_total_supply: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   @Transform(({ value }) => value.trim().toLowerCase())
-  create_token_page: string;
+  create_token_page = 'false';
 
   @IsOptional()
   @IsString()
@@ -134,6 +134,12 @@ export class UpdateDto {
     require_protocol: true,
   })
   twitter_url: string;
+
+  @IsString()
+  @IsUrl({
+    require_protocol: true,
+  })
+  website_url: string;
 
   @IsOptional()
   @IsBoolean()
