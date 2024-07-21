@@ -109,31 +109,8 @@ export class LaunchboxService {
         this.tokenHoldersListener(token);
         this.tokenTransactionsListener(token);
       });
-
-      const [latestTransaction, latestHolder] = await Promise.all([
-        this.launchboxTokenTransactionRepository.findOne({
-          order: { block_number: 'DESC' },
-        }),
-        this.launchboxTokenHolderRepository.findOne({
-          order: { block_number: 'DESC' },
-        }),
-      ]);
-
-      await Promise.all(
-        tokens.map(async (token) => {
-          await this.seedTokenTransactions(
-            token,
-            latestTransaction?.block_number ?? token.chain.block_number,
-          );
-
-          await this.seedTokenHolders(
-            token,
-            latestHolder?.block_number ?? token.chain.block_number,
-          );
-        }),
-      );
     } catch (error) {
-      this.logger.error('An error occurred while initializing.', error.stack);
+      this.logger.error('Error initializing launchbox service', error.stack);
     }
   }
 
