@@ -36,10 +36,10 @@ import {
   NFTActions,
 } from './enums/leaderboard.enum';
 import {
+  Chain,
   IIncentiveAction,
   IIncentiveChannel,
   ILaunchboxTokenLeaderboard,
-  Chain,
 } from './interfaces/launchbox.interface';
 
 import { JwtService } from '@nestjs/jwt';
@@ -1729,6 +1729,10 @@ export class LaunchboxService {
           return { ...p, points: 0 };
         }),
       );
+      const totalPoints = sortedParticipants.reduce(
+        (ac, sp) => ac + sp.points,
+        0,
+      );
 
       const ranking = sortedParticipants
         .map((p) => ({
@@ -1750,6 +1754,7 @@ export class LaunchboxService {
         data: {
           ranking: paginatedParticipants,
           total: sortedParticipants.length,
+          totalPoints,
         },
       });
     } catch (error) {
