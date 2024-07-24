@@ -86,9 +86,14 @@ export class CreateDto {
   token_total_supply: string;
 
   @IsOptional()
-  @IsString()
+  @Transform(({ value }) => value.trim().toLowerCase() === 'true')
+  @IsBoolean()
+  create_token_page = false;
+
+  @IsOptional()
   @Transform(({ value }) => value.trim().toLowerCase())
-  create_token_page = 'false';
+  @IsString()
+  create_token_page_slug: string;
 
   @IsOptional()
   @IsString()
@@ -135,6 +140,7 @@ export class UpdateDto {
   })
   twitter_url: string;
 
+  @IsOptional()
   @IsString()
   @IsUrl({
     require_protocol: true,
@@ -144,6 +150,10 @@ export class UpdateDto {
   @IsOptional()
   @IsBoolean()
   create_token_page: boolean;
+
+  @IsOptional()
+  @IsString()
+  create_token_page_slug: string;
 }
 
 export class ChainDto {

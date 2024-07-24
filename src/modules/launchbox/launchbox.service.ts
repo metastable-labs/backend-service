@@ -216,6 +216,28 @@ export class LaunchboxService {
         this.validateBodySocial(formattedSocials);
       }
 
+      if (body.create_token_page) {
+        if (!body.create_token_page_slug) {
+          throw new ServiceError(
+            'Token page slug is required',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        const existingToken = await this.launchboxTokenRepository.findOne({
+          where: {
+            create_token_page_url: body.create_token_page_slug,
+          },
+        });
+
+        if (existingToken) {
+          throw new ServiceError(
+            'Token page slug already in use',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
+
       const fetchedUser = await this.fetchOrCreateUser(
         user,
         formattedChain.transaction_hash,
@@ -246,7 +268,8 @@ export class LaunchboxService {
         id: uuidv4(),
         token_decimals: Number(body.token_decimals),
         token_total_supply: Number(body.token_total_supply),
-        create_token_page: body.create_token_page === 'true',
+        create_token_page: body.create_token_page,
+        create_token_page_slug: body.create_token_page_slug,
         chain: {
           ...formattedChain,
           deployer_address: fetchedUser.wallet_address,
@@ -306,6 +329,28 @@ export class LaunchboxService {
         throw new ServiceError('Token not found', HttpStatus.NOT_FOUND);
       }
 
+      if (body.create_token_page) {
+        if (!body.create_token_page_slug) {
+          throw new ServiceError(
+            'Token page slug is required',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        const existingToken = await this.launchboxTokenRepository.findOne({
+          where: {
+            create_token_page_url: body.create_token_page_slug,
+          },
+        });
+
+        if (existingToken) {
+          throw new ServiceError(
+            'Token page slug already in use',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
+
       await this.launchboxTokenRepository.updateOne(
         { id },
         {
@@ -313,10 +358,13 @@ export class LaunchboxService {
             socials: {
               warpcast: { channel: body.socials },
             },
-            telegram_url: body.telegram_url,
-            twitter_url: body.twitter_url,
-            create_token_page: body.create_token_page,
-            website_url: body.website_url,
+            telegram_url: body.telegram_url ?? token.telegram_url,
+            twitter_url: body.twitter_url ?? token.twitter_url,
+            website_url: body.website_url ?? token.website_url,
+            create_token_page:
+              body.create_token_page ?? token.create_token_page,
+            create_token_page_slug:
+              body.create_token_page_slug ?? token.create_token_page_slug,
           },
         },
       );
@@ -462,9 +510,14 @@ export class LaunchboxService {
 
   async findOne(reference: string): Promise<IResponse | ServiceError> {
     try {
-      const isUuid = validator.isUUID(reference);
       const launchboxToken = await this.launchboxTokenRepository.findOne({
-        where: isUuid ? { id: reference } : { token_address: reference },
+        where: {
+          $or: [
+            { id: reference },
+            { token_address: reference },
+            { create_token_page_slug: reference },
+          ],
+        },
       });
 
       if (!launchboxToken) {

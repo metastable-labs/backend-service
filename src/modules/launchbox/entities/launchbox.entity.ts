@@ -90,6 +90,9 @@ export class LaunchboxToken {
   create_token_page: boolean;
 
   @Column()
+  create_token_page_slug: string;
+
+  @Column()
   warpcast_channel_link: string;
 
   @Column()
