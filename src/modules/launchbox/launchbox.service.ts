@@ -1258,7 +1258,7 @@ export class LaunchboxService {
         : ethers.BigNumber.from(formattedBalanceValue.toString()).sub(value);
 
       const formattedBalance = ethers.utils.formatUnits(
-        updatedBalance,
+        updatedBalance.lt(0) ? ethers.BigNumber.from(0) : updatedBalance,
         token.token_decimals,
       );
 
@@ -1268,7 +1268,7 @@ export class LaunchboxService {
       );
     } else if (isReceiver) {
       const formattedValue = ethers.utils.formatUnits(
-        value.toString(),
+        value.lt(0) ? ethers.BigNumber.from(0) : value,
         token.token_decimals,
       );
 
