@@ -2,6 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { ethers } from 'ethers';
 import { env } from '../../config/env';
 import * as NftAbi from './abis/Nft.json';
+import {
+  AERODROME_SUGAR_CONTRACT_ABI,
+  AERODROME_SUGAR_CONTRACT_ADDRESS,
+} from '../../constants';
+import { AerodromePool } from './interfaces/contract.interface';
 
 @Injectable()
 export class ContractService {
@@ -105,5 +110,33 @@ export class ContractService {
     await transaction.wait();
 
     return transaction.from;
+  }
+
+  async getAerodromePools(): Promise<AerodromePool[]> {
+    const provider = this.getProvider();
+
+    const contract = new ethers.Contract(
+      AERODROME_SUGAR_CONTRACT_ADDRESS,
+      AERODROME_SUGAR_CONTRACT_ABI,
+      provider,
+    );
+
+    const pools = await contract.all(500, 0);
+
+    return pools;
+  }
+
+  async getAerodromePoolsByIndex(index: number): Promise<AerodromePool> {
+    const provider = this.getProvider();
+
+    const contract = new ethers.Contract(
+      AERODROME_SUGAR_CONTRACT_ADDRESS,
+      AERODROME_SUGAR_CONTRACT_ABI,
+      provider,
+    );
+
+    const pool = await contract.byIndex(index);
+
+    return pool;
   }
 }
