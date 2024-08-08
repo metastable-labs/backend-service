@@ -6,68 +6,46 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
   Req,
-  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { LiquidityService } from './liquidity.service';
-import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { AuthGuard } from '../../common/guards/auth.guard';
+import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ErrorResponse } from '../../common/responses';
-import { AuthRequest } from '../../common/interfaces/request.interface';
-import { CreateDto } from './dtos/liquidity.dto';
-import { LiquiditiesResponse, LiquidityResponse } from './responses/liquidity';
+import { PaginateDto } from './dtos/liquidity.dto';
 
 @ApiTags('Liquidities')
-@ApiBearerAuth()
-@UseGuards(AuthGuard)
 @UseInterceptors(ClassSerializerInterceptor)
 @Controller('liquidities')
 export class LiquidityController {
   constructor(private readonly liquidityService: LiquidityService) {}
 
   @ApiResponse({
-    status: HttpStatus.CREATED,
-    description: 'Liquidity creation successful',
-    type: LiquidityResponse,
-  })
-  @ApiResponse({
-    status: HttpStatus.INTERNAL_SERVER_ERROR,
-    description: 'Error recording liquidity',
-    type: ErrorResponse,
-  })
-  @Post()
-  async create(@Req() req: AuthRequest, @Body() body: CreateDto) {
-    return this.liquidityService.create(req.user, body);
-  }
-
-  @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Liquidities fetched',
-    type: LiquiditiesResponse,
+    description: 'Liquidity pools fetched',
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Error getting all liquidities',
+    description: 'Error getting all liquidity pools',
     type: ErrorResponse,
   })
-  @Get()
-  async getAll(@Req() req: AuthRequest) {
-    return this.liquidityService.getAll(req.user);
+  @Get('/pools')
+  async getPools(@Query() query: PaginateDto) {
+    return this.liquidityService.getPools(query);
   }
 
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Liquidity fetched',
-    type: LiquidityResponse,
+    description: 'Liquidity pool fetched',
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'Liquidity not found',
+    description: 'Liquidity pool not found',
     type: ErrorResponse,
   })
-  @Get(':id')
-  async getOne(@Req() req: AuthRequest, @Param('id') id: string) {
-    return this.liquidityService.getOne(req.user, id);
+  @Get('/pools/:id')
+  async getOnePool(@Param('id') id: string) {
+    return this.liquidityService.getOnePool(id);
   }
 }

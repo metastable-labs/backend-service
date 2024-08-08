@@ -1,15 +1,18 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { LiquidityService } from './liquidity.service';
 import { LiquidityController } from './liquidity.controller';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Liquidity } from './entities/liquidity.entity';
-import { User } from '../user/entities/user.entity';
-import { JwtModule } from '@nestjs/jwt';
+import { LiquidityPool } from './entities/liquidity.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Liquidity, User]), JwtModule],
+  imports: [TypeOrmModule.forFeature([LiquidityPool])],
   providers: [LiquidityService],
   controllers: [LiquidityController],
   exports: [LiquidityService],
 })
-export class LiquidityModule {}
+export class LiquidityModule implements OnModuleInit {
+  constructor(private readonly liquidityService: LiquidityService) {}
+  async onModuleInit() {
+    await this.liquidityService.seedPools();
+  }
+}

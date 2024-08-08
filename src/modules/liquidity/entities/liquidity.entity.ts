@@ -8,13 +8,12 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
-import { Provider } from '../enums/liquidity.enum';
-import { Chain } from '../interfaces/liquidity.interface';
+import { Providers } from '../interfaces/liquidity.interface';
 
 @Entity({
-  name: 'liquidities',
+  name: 'liquidity_pools',
 })
-export class Liquidity {
+export class LiquidityPool {
   @Exclude()
   @ObjectIdColumn({ select: false })
   _id: ObjectId;
@@ -22,38 +21,11 @@ export class Liquidity {
   @PrimaryColumn()
   id: string;
 
-  @Column()
-  pool_token_a_address: string;
+  @Column('jsonb', { array: true })
+  providers: Providers;
 
   @Column()
-  pool_token_b_address: string;
-
-  @Column()
-  pool_token_a_amount: string;
-
-  @Column()
-  pool_token_b_amount: string;
-
-  @Column()
-  pool_token_amount: string;
-
-  @Column()
-  pool_token_address: string;
-
-  @Column()
-  transaction_hash: string;
-
-  @Column()
-  deployer_address: string;
-
-  @Column()
-  chain: Chain;
-
-  @Column()
-  provider: Provider;
-
-  @Column()
-  user_id: string;
+  is_active: boolean;
 
   @CreateDateColumn()
   created_at: Date;
