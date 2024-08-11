@@ -13,7 +13,7 @@ import {
 import { Request } from 'express';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { EarnService } from './earn.service';
-import { ErrorResponse } from 'src/common/responses';
+import { ErrorResponse } from '../../common/responses';
 import { RegisterDto } from './dtos/earn.dto';
 import { SanitizerGuard } from '../../common/guards/sanitizer.guard';
 
