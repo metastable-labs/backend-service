@@ -1,10 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { User } from '@privy-io/server-auth';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { ethers } from 'ethers';
 import { v4 as uuidv4 } from 'uuid';
+import { MongoRepository } from 'typeorm';
+import validator from 'validator';
+import { InjectRepository } from '@nestjs/typeorm';
+import Launchbox, { Cast, Participant } from 'channels-lib';
 import { ServiceError } from '../../common/errors/service.error';
 import { successResponse } from '../../common/responses/success.helper';
 import {
@@ -26,7 +29,6 @@ import {
   LaunchboxTokenHolder,
   LaunchboxTokenLeaderboard,
   LaunchboxTokenTransaction,
-  LaunchboxUser,
   LeaderboardParticipant,
   TokenConfiguredAction,
 } from './entities/launchbox.entity';
@@ -41,20 +43,13 @@ import {
   IIncentiveChannel,
   ILaunchboxTokenLeaderboard,
 } from './interfaces/launchbox.interface';
-
-import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
-import Launchbox, { Cast, Participant } from 'channels-lib';
-import { env } from 'src/common/config/env';
-import { MongoRepository } from 'typeorm';
-import validator from 'validator';
+import { env } from '../../common/config/env';
 import { AnalyticService } from '../../common/helpers/analytic/analytic.service';
 import { PeriodKey } from '../../common/helpers/analytic/interfaces/analytic.interface';
 import { CloudinaryService } from '../../common/helpers/cloudinary/cloudinary.service';
 import { ContractService } from '../../common/helpers/contract/contract.service';
 import { FarcasterService } from '../../common/helpers/farcaster/farcaster.service';
-import { PrivyService } from '../../common/helpers/privy/privy.service';
-import { SharedService } from '../../common/helpers/shared/shared.service';
+import { SharedService } from '../shared/shared.service';
 import { IResponse } from '../../common/interfaces/response.interface';
 import {
   decrypt,
@@ -68,6 +63,7 @@ import {
   FileUploadFolder,
   TransactionType,
 } from './enums/launchbox.enum';
+import { SharedUser } from '../shared/entities/user.entity';
 
 @Injectable()
 export class LaunchboxService {
@@ -84,8 +80,8 @@ export class LaunchboxService {
     private readonly incentiveChannelRespository: MongoRepository<IncentiveChannel>,
     @InjectRepository(LeaderboardParticipant)
     private readonly leaderboardParticipantRepository: MongoRepository<LeaderboardParticipant>,
-    @InjectRepository(LaunchboxUser)
-    private readonly launchboxUserRepository: MongoRepository<LaunchboxUser>,
+    @InjectRepository(SharedUser)
+    private readonly sharedUserRepository: MongoRepository<SharedUser>,
     @InjectRepository(LaunchboxApiCredential)
     private readonly launchboxApiKeyRepository: MongoRepository<LaunchboxApiCredential>,
     private readonly cloudinaryService: CloudinaryService,
@@ -93,8 +89,6 @@ export class LaunchboxService {
     private readonly contractService: ContractService,
     private readonly sharedService: SharedService,
     private readonly analyticService: AnalyticService,
-    private readonly privyService: PrivyService,
-    private readonly jwtService: JwtService,
   ) {}
 
   private logger = new Logger(LaunchboxService.name);
@@ -114,94 +108,8 @@ export class LaunchboxService {
     }
   }
 
-  async authenticate(privyUserId: string): Promise<IResponse | ServiceError> {
-    try {
-      const userExists = await this.launchboxUserRepository.findOne({
-        where: {
-          reference: privyUserId,
-        },
-      });
-
-      if (userExists) {
-        const { token, expire } = await this.generateToken(userExists.id);
-
-        return successResponse({
-          status: true,
-          message: 'Authenticated successfully',
-          data: {
-            token,
-            expire,
-            user: userExists,
-          },
-        });
-      }
-
-      const privyUser = await this.privyService.clinet.getUser(privyUserId);
-
-      const { identifier, type, walletAddress } = this.getAuthType(privyUser);
-
-      const newUser = this.launchboxUserRepository.create({
-        id: uuidv4(),
-        reference: privyUserId,
-        auth_id: identifier,
-        auth_type: type,
-        wallet_address: walletAddress,
-        is_active: true,
-      });
-
-      await this.launchboxUserRepository.save(newUser);
-
-      const { token, expire } = await this.generateToken(newUser.id);
-
-      return successResponse({
-        status: true,
-        message: 'Authenticated successfully',
-        data: {
-          token,
-          expire,
-          user: newUser,
-        },
-      });
-    } catch (error) {
-      this.logger.error('An error occurred while authenticating.', error.stack);
-
-      if (error instanceof ServiceError) {
-        return error.toErrorResponse();
-      }
-
-      throw new ServiceError(
-        'An error occurred while authenticating.',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      ).toErrorResponse();
-    }
-  }
-
-  async authSession(user: LaunchboxUser): Promise<IResponse | ServiceError> {
-    try {
-      return successResponse({
-        status: true,
-        message: 'Authenticated session',
-        data: user,
-      });
-    } catch (error) {
-      this.logger.error(
-        'An error occurred while authenticating the session.',
-        error.stack,
-      );
-
-      if (error instanceof ServiceError) {
-        return error.toErrorResponse();
-      }
-
-      throw new ServiceError(
-        'An error occurred while authenticating the session. Please try again later.',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      ).toErrorResponse();
-    }
-  }
-
   async create(
-    user: LaunchboxUser,
+    user: SharedUser,
     body: CreateDto,
     file: Express.Multer.File,
   ): Promise<IResponse | ServiceError> {
@@ -311,7 +219,7 @@ export class LaunchboxService {
   }
 
   async updateOne(
-    user: LaunchboxUser,
+    user: SharedUser,
     id: string,
     body: UpdateDto,
   ): Promise<IResponse | ServiceError> {
@@ -856,7 +764,7 @@ export class LaunchboxService {
   }
 
   async getChannelsByAddress(
-    user: LaunchboxUser,
+    user: SharedUser,
     limit: number,
   ): Promise<IResponse | ServiceError> {
     try {
@@ -929,7 +837,7 @@ export class LaunchboxService {
   }
 
   async updateWebsiteBuilder(
-    user: LaunchboxUser,
+    user: SharedUser,
     id: string,
     body: WebsiteBuilderDto,
     files: {
@@ -1494,7 +1402,7 @@ export class LaunchboxService {
   }
 
   async activateLeaderboard(
-    user: LaunchboxUser,
+    user: SharedUser,
     token_id: string,
   ): Promise<IResponse | ServiceError> {
     try {
@@ -1571,7 +1479,7 @@ export class LaunchboxService {
   }
 
   async earnPoints(
-    user: LaunchboxUser,
+    user: SharedUser,
     token_id: string,
   ): Promise<IResponse | ServiceError> {
     try {
@@ -1828,7 +1736,7 @@ export class LaunchboxService {
   }
 
   async addIncentiveAction(
-    user: LaunchboxUser,
+    user: SharedUser,
     token_id: string,
     actionsArray: ActionsArrayDTO,
   ): Promise<IResponse | ServiceError> {
@@ -1936,7 +1844,7 @@ export class LaunchboxService {
   }
 
   async removeIncentiveAction(
-    user: LaunchboxUser,
+    user: SharedUser,
     token_id: string,
     action_id: string,
   ): Promise<IResponse | ServiceError> {
@@ -2352,55 +2260,10 @@ export class LaunchboxService {
     return this.cloudinaryService.upload(file, FileUploadFolder.Launchbox);
   }
 
-  private async generateToken(id: string): Promise<{
-    token: string;
-    expire: number;
-  }> {
-    const token = this.jwtService.sign({
-      sub: id,
-    });
-    const decoded = this.jwtService.decode(token);
-
-    return {
-      token,
-      expire: decoded.exp,
-    };
-  }
-
-  private getAuthType(privyUser: User) {
-    const authTypes = [
-      {
-        check: () => privyUser.email,
-        type: 'email',
-        getId: () => privyUser.email?.address,
-      },
-      {
-        check: () => privyUser.wallet?.walletClientType !== 'privy',
-        type: () => privyUser.wallet?.walletClientType,
-        getId: () => privyUser.wallet?.address,
-      },
-    ];
-
-    for (const auth of authTypes) {
-      if (auth.check() && privyUser.wallet) {
-        return {
-          identifier: auth.getId(),
-          type: typeof auth.type === 'function' ? auth.type() : auth.type,
-          walletAddress: privyUser.wallet.address,
-        };
-      }
-    }
-
-    throw new ServiceError(
-      'No valid authentication method found',
-      HttpStatus.BAD_REQUEST,
-    );
-  }
-
   private async fetchOrCreateUser(
-    user: LaunchboxUser,
+    user: SharedUser,
     transactionHash: string,
-  ): Promise<LaunchboxUser> {
+  ): Promise<SharedUser> {
     if (!user.externalApiCall) {
       return user;
     }
@@ -2408,7 +2271,7 @@ export class LaunchboxService {
     const deployerAddress =
       await this.contractService.getTokenDeployerAddress(transactionHash);
 
-    const userExists = await this.launchboxUserRepository.findOne({
+    const userExists = await this.sharedUserRepository.findOne({
       where: {
         wallet_address: deployerAddress,
       },
@@ -2418,7 +2281,7 @@ export class LaunchboxService {
       return userExists;
     }
 
-    const newUser = this.launchboxUserRepository.create({
+    const newUser = this.sharedUserRepository.create({
       id: uuidv4(),
       reference: user.apiCredential?.id,
       auth_id: user.apiCredential?.id,
@@ -2427,6 +2290,6 @@ export class LaunchboxService {
       is_active: true,
     });
 
-    return this.launchboxUserRepository.save(newUser);
+    return this.sharedUserRepository.save(newUser);
   }
 }

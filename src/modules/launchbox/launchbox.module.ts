@@ -12,19 +12,15 @@ import {
   LaunchboxTokenHolder,
   LaunchboxTokenLeaderboard,
   LaunchboxTokenTransaction,
-  LaunchboxUser,
   LeaderboardParticipant,
   TokenConfiguredAction,
 } from './entities/launchbox.entity';
 import { LaunchboxController } from './launchbox.controller';
 import { LaunchboxService } from './launchbox.service';
-
-import { JwtModule } from '@nestjs/jwt';
 import { AnalyticModule } from '../../common/helpers/analytic/analytic.module';
-import { PrivyModule } from '../../common/helpers/privy/privy.module';
-import { SharedModule } from '../../common/helpers/shared/shared.module';
-import { LaunchboxAuthStrategy } from '../../common/strategies/lauchbox.auth.strategy';
+import { SharedModule } from '../shared/shared.module';
 import { ApiKeyStrategy } from '../../common/strategies/api-key.strategy';
+import { SharedUser } from '../shared/entities/user.entity';
 
 @Module({
   imports: [
@@ -37,7 +33,7 @@ import { ApiKeyStrategy } from '../../common/strategies/api-key.strategy';
       IncentiveChannel,
       LeaderboardParticipant,
       TokenConfiguredAction,
-      LaunchboxUser,
+      SharedUser,
       LaunchboxApiCredential,
     ]),
     CloudinaryModule,
@@ -45,13 +41,8 @@ import { ApiKeyStrategy } from '../../common/strategies/api-key.strategy';
     ContractModule,
     SharedModule,
     AnalyticModule,
-    PrivyModule,
-    JwtModule.register({
-      secret: env.jwt.secret,
-      signOptions: { expiresIn: env.jwt.expiresIn },
-    }),
   ],
-  providers: [LaunchboxService, LaunchboxAuthStrategy, ApiKeyStrategy],
+  providers: [LaunchboxService, ApiKeyStrategy],
   controllers: [LaunchboxController],
   exports: [LaunchboxService],
 })

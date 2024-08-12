@@ -11,7 +11,7 @@ import {
 import { ContractService } from '../contract/contract.service';
 import { Period } from './enums/analytic.enum';
 import { getDateRangeFromKey, getPeriod } from '../../utils';
-import { SharedService } from '../shared/shared.service';
+import { SharedService } from '../../../modules/shared/shared.service';
 
 @Injectable()
 export class AnalyticService {
