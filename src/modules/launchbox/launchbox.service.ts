@@ -2048,7 +2048,7 @@ export class LaunchboxService {
     }
 
     for (const participant of leaderboard.participants) {
-      const balance = await this.contractService.getBalance(
+      const balance = await this.contractService.getNFTBalance(
         participant.associated_address,
         contractAddress,
       );
