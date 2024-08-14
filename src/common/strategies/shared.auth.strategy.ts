@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import { env } from '../config/env';
 import { ServiceError } from '../errors/service.error';
 import { SharedUser } from '../../modules/shared/entities/user.entity';
+import { SharedWallet } from '../../modules/shared/entities/wallet.entity';
 
 @Injectable()
 export class SharedAuthStrategy extends PassportStrategy(
@@ -15,6 +16,8 @@ export class SharedAuthStrategy extends PassportStrategy(
   constructor(
     @InjectRepository(SharedUser)
     private readonly sharedUserRepository: Repository<SharedUser>,
+    @InjectRepository(SharedWallet)
+    private readonly walletRepository: Repository<SharedWallet>,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -24,16 +27,42 @@ export class SharedAuthStrategy extends PassportStrategy(
   }
 
   async validate(payload: { sub: string }): Promise<SharedUser> {
-    const user = await this.sharedUserRepository.findOne({
-      where: {
-        id: payload.sub,
-      },
-    });
+    try {
+      const user = await this.sharedUserRepository.findOne({
+        where: {
+          id: payload.sub,
+        },
+      });
 
-    if (!user) {
-      throw new ServiceError('Unauthorized', HttpStatus.UNAUTHORIZED);
+      if (!user) {
+        throw new ServiceError('Unauthorized', HttpStatus.UNAUTHORIZED);
+      }
+
+      const wallet = await this.walletRepository.findOne({
+        where: {
+          user_id: user.id,
+        },
+      });
+
+      if (!wallet) {
+        throw new ServiceError('Unauthorized', HttpStatus.UNAUTHORIZED);
+      }
+
+      return {
+        ...user,
+        _id: undefined,
+        reference: undefined,
+        payload: undefined,
+        wallet: {
+          ...wallet,
+          _id: undefined,
+        },
+      };
+    } catch (error) {
+      throw new ServiceError(
+        'Unauthorized',
+        HttpStatus.UNAUTHORIZED,
+      ).toErrorResponse();
     }
-
-    return user;
   }
 }
