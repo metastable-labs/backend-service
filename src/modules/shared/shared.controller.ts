@@ -1,10 +1,11 @@
-import { ClassSerializerInterceptor, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, ClassSerializerInterceptor, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SharedService } from './shared.service';
 import { ErrorResponse } from '../../common/responses';
 import { PrivyGuard } from '../../common/guards/privy.guard';
 import { SharedAuthRequest } from '../../common/interfaces/request.interface';
 import { SharedAuthGuard } from '../../common/guards/shared.auth.guard';
+import { AuthDto } from './dtos/shared.dto';
 
 @ApiTags('Shared')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -29,8 +30,8 @@ export class SharedController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(PrivyGuard)
   @Post('auth')
-  async auth(@Req() request: SharedAuthRequest) {
-    return this.sharedService.authenticate(request.body.userId);
+  async auth(@Req() request: SharedAuthRequest, @Body() body: AuthDto) {
+    return this.sharedService.authenticate(request.body.userId, body.referral_code);
   }
 
   @ApiResponse({

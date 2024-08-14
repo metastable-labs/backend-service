@@ -10,6 +10,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '@privy-io/server-auth';
+import { SharedWallet } from './wallet.entity';
 
 @Entity({
   name: 'shared_users',
@@ -17,14 +18,14 @@ import { User } from '@privy-io/server-auth';
 export class SharedUser {
   @Exclude()
   @ObjectIdColumn({ select: false })
-  _id: ObjectId;
+  _id: ObjectId | undefined;
 
   @PrimaryColumn()
   id: string;
 
   @Exclude()
   @Column()
-  reference: string;
+  reference: string | undefined;
 
   @Column()
   auth_id: string;
@@ -38,9 +39,12 @@ export class SharedUser {
   @Column()
   is_active: boolean;
 
+  @Column()
+  referral_code: string;
+
   @Exclude()
   @Column({ type: 'jsonb' })
-  payload: User;
+  payload: User | undefined;
 
   @CreateDateColumn()
   created_at: Date;
@@ -48,6 +52,7 @@ export class SharedUser {
   @UpdateDateColumn()
   updated_at: Date;
 
+  wallet: SharedWallet;
   externalApiCall?: boolean;
   apiCredential?: LaunchboxApiCredential;
 }
