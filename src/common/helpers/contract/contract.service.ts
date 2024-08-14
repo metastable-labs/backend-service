@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ethers } from 'ethers';
 import { env } from '../../config/env';
-import * as NftAbi from './abis/Nft.json';
 
 @Injectable()
 export class ContractService {
@@ -18,8 +17,8 @@ export class ContractService {
     return this.httpsProviders[env.blockchain.rpcUrl];
   }
 
-  getContract(nftAddress: string): ethers.Contract {
-    return new ethers.Contract(nftAddress, NftAbi, this.getProvider());
+  getContract(address: string, abi: string[]): ethers.Contract {
+    return new ethers.Contract(address, abi, this.getProvider());
   }
 
   getTokenTransferEventAbi() {
@@ -35,8 +34,15 @@ export class ContractService {
     ];
   }
 
-  async getBalance(address: string, nftAddress: string): Promise<number> {
-    const contract = this.getContract(nftAddress);
+  async getNFTBalance(
+    address: string,
+    nftContractAddress: string,
+  ): Promise<number> {
+    const ABI = [
+      'function balanceOf(address account, uint256 id) external view returns (uint256)',
+      'function nextTokenId() external view returns (uint256)',
+    ];
+    const contract = this.getContract(nftContractAddress, ABI);
 
     const nextTokenId = await contract.nextTokenId();
 
