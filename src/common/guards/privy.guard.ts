@@ -33,7 +33,6 @@ export class PrivyGuard implements CanActivate {
 
       return true;
     } catch (error) {
-      console.log(error);
       if (error instanceof ServiceError) {
         return error.toErrorResponse();
       }
