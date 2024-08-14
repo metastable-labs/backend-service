@@ -8,14 +8,10 @@ import {
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import {
-  ActivitySlug,
-  TransactionStatus,
-  TransactionType,
-} from '../enums/earn.enum';
+import { TransactionStatus, TransactionType } from '../enums/earn.enum';
 
 @Entity({
-  name: 'points_transactions',
+  name: 'earn_transactions',
 })
 export class Transaction {
   @Exclude()
@@ -26,16 +22,16 @@ export class Transaction {
   id: string;
 
   @Column()
-  points: number;
-
-  @Column()
-  user_id: string;
+  wallet_id: string;
 
   @Column()
   activity_id: string;
 
   @Column()
-  activity_slug: ActivitySlug;
+  points: number;
+
+  @Column()
+  description: string;
 
   @Column()
   type: TransactionType;
@@ -43,11 +39,11 @@ export class Transaction {
   @Column()
   status: TransactionStatus;
 
-  totalPoints: number;
-
   @CreateDateColumn()
   created_at: Date;
 
   @UpdateDateColumn()
   updated_at: Date;
+
+  totalPoints: number;
 }

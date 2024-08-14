@@ -3,6 +3,7 @@ export enum ActivitySlug {
   NFT = 'nft',
   SOCIAL = 'social',
   BRIDGE = 'bridge',
+  LIQUIDITY = 'liquidity',
 }
 
 export enum MultiplierSlug {
@@ -10,6 +11,7 @@ export enum MultiplierSlug {
   SUPERMIGRATE_TOKEN = 'supermigrate-token',
   VERIFIED_ACCOUNT = 'verified-account',
   FOLLOWER = '2k-follower',
+  STAKE_LP = 'stake-lp',
 }
 
 export enum TransactionStatus {
@@ -21,4 +23,5 @@ export enum TransactionStatus {
 export enum TransactionType {
   EARN = 'earn',
   SPEND = 'spend',
+  CLAIM = 'claim',
 }
