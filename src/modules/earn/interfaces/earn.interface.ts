@@ -1,4 +1,4 @@
-import { ActivitySlug } from '../enums/earn.enum';
+import { ActivitySlug, ActivityType } from '../enums/earn.enum';
 
 export interface Multiplier {
   id: string;
@@ -12,9 +12,17 @@ export interface Multiplier {
 export interface RecordPoint {
   userId: string;
   walletId: string;
+  walletAddress: string;
   activityId: string;
+  activityType: ActivityType;
   points: number;
-  availableBalancePoints: number;
-  totalBalancePoints: number;
   description: string;
+}
+
+export interface RecordActivityPoint {
+  userId: string;
+  walletId: string;
+  walletAddress: string;
+  activitySlug: ActivitySlug;
+  points?: number;
 }

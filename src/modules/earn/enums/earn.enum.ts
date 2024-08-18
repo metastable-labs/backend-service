@@ -3,7 +3,16 @@ export enum ActivitySlug {
   NFT = 'nft',
   SOCIAL = 'social',
   BRIDGE = 'bridge',
-  LIQUIDITY = 'liquidity',
+  LIQUIDITY_MIGRATION = 'liquidity-migration',
+  LIQUIDITY_SUPPLY = 'liquidity-supply',
+}
+
+export enum ActivityType {
+  LIQUIDITY_MIGRATION,
+  BRIDGING,
+  SOCIAL_INTERACTION,
+  NFT_MINT,
+  REFERRAL,
 }
 
 export enum MultiplierSlug {

@@ -1,9 +1,9 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MongoRepository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import BigNumber from 'bignumber.js';
-
+import { ethers } from 'ethers';
 import { env } from '../../common/config/env';
 import { ServiceError } from '../../common/errors/service.error';
 import { ContractService } from '../../common/helpers/contract/contract.service';
@@ -14,14 +14,26 @@ import { SharedReferral } from '../shared/entities/referral.entity';
 import { Transaction } from './entities/transaction.entity';
 import {
   ActivitySlug,
+  ActivityType,
   MultiplierSlug,
   TransactionStatus,
   TransactionType,
 } from './enums/earn.enum';
 import { SharedWallet } from '../shared/entities/wallet.entity';
-import { RecordPoint } from './interfaces/earn.interface';
+import { RecordActivityPoint, RecordPoint } from './interfaces/earn.interface';
 import { SharedUser } from '../shared/entities/user.entity';
 import { PaginateDto } from './dtos/earn.dto';
+import { Token } from '../../common/enums/index.enum';
+import { AnalyticService } from '../../common/helpers/analytic/analytic.service';
+
+const activitySlugToActivityType: Record<ActivitySlug, ActivityType> = {
+  [ActivitySlug.REFERRAL]: ActivityType.REFERRAL,
+  [ActivitySlug.NFT]: ActivityType.NFT_MINT,
+  [ActivitySlug.SOCIAL]: ActivityType.SOCIAL_INTERACTION,
+  [ActivitySlug.BRIDGE]: ActivityType.BRIDGING,
+  [ActivitySlug.LIQUIDITY_MIGRATION]: ActivityType.LIQUIDITY_MIGRATION,
+  [ActivitySlug.LIQUIDITY_SUPPLY]: ActivityType.LIQUIDITY_MIGRATION,
+};
 
 @Injectable()
 export class EarnService {
@@ -34,8 +46,19 @@ export class EarnService {
     private readonly transactionRepository: MongoRepository<Transaction>,
     @InjectRepository(SharedWallet)
     private readonly walletRepository: MongoRepository<SharedWallet>,
+    @InjectRepository(SharedUser)
+    private readonly sharedUserRepository: MongoRepository<SharedUser>,
     private readonly contractService: ContractService,
+    private readonly analyticService: AnalyticService,
   ) {}
+
+  private logger = new Logger(EarnService.name);
+
+  async init() {
+    await this.seedActivities();
+    await this.tokenBridgeListener();
+    await this.liquidityMigrationListener();
+  }
 
   async getEarnings(user: SharedUser): Promise<IResponse | ServiceError> {
     try {
@@ -203,11 +226,12 @@ export class EarnService {
         );
       }
 
-      await this.recordActivityPoints(
-        user.id,
-        user.wallet.id,
-        ActivitySlug.NFT,
-      );
+      await this.recordActivityPoints({
+        userId: user.id,
+        walletId: user.wallet.id,
+        walletAddress: user.wallet_address,
+        activitySlug: ActivitySlug.NFT,
+      });
 
       return successResponse({
         status: true,
@@ -228,7 +252,7 @@ export class EarnService {
   private async getUsersRank() {
     const wallets = await this.walletRepository.find({
       order: {
-        available_balance: 'DESC',
+        total_balance: 'DESC',
       },
     });
 
@@ -237,13 +261,13 @@ export class EarnService {
     let tiedCount = 0;
 
     for (const wallet of wallets) {
-      if (previousPoints !== wallet.available_balance) {
+      if (previousPoints !== wallet.total_balance) {
         rank += tiedCount;
         tiedCount = 0;
       }
 
       wallet.rank = rank;
-      previousPoints = wallet.available_balance;
+      previousPoints = wallet.total_balance;
       tiedCount++;
     }
 
@@ -317,32 +341,48 @@ export class EarnService {
     }
   }
 
-  async recordActivityPoints(
-    userId: string,
-    walletId: string,
-    activitySlug: ActivitySlug,
-  ) {
-    const activity = await this.activityRepository.findOne({
-      where: {
-        slug: activitySlug,
-      },
-    });
+  async recordActivityPoints({
+    userId,
+    walletId,
+    walletAddress,
+    activitySlug,
+    points,
+  }: RecordActivityPoint) {
+    try {
+      const activity = await this.activityRepository.findOne({
+        where: {
+          slug: activitySlug,
+        },
+      });
 
-    if (!activity) {
-      throw new ServiceError('Activity not found', HttpStatus.NOT_FOUND);
+      if (!activity) {
+        throw new ServiceError('Activity not found', HttpStatus.NOT_FOUND);
+      }
+
+      const activityPoints = points || activity.points;
+      const activityType = activitySlugToActivityType[activitySlug];
+
+      await this.recordPoints({
+        userId,
+        walletId,
+        walletAddress,
+        activityId: activity.id,
+        activityType,
+        description: activity.name,
+        points: activityPoints,
+      });
+
+      await this.recordReferralPoints(userId, activity.points);
+
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error recording activity points for user ${userId} and wallet ${walletId}`,
+        error.stack,
+      );
+
+      return false;
     }
-
-    await this.recordPoints({
-      userId,
-      walletId,
-      activityId: activity.id,
-      description: activity.name,
-      availableBalancePoints: activity.points,
-      totalBalancePoints: activity.points,
-      points: activity.points,
-    });
-
-    await this.recordReferralPoints(userId, activity.points);
   }
 
   private async recordReferralPoints(userId: string, points: number) {
@@ -366,27 +406,21 @@ export class EarnService {
       throw new ServiceError('Activity not found', HttpStatus.NOT_FOUND);
     }
 
-    const wallet = await this.walletRepository.findOne({
-      where: {
-        user_id: referral.referrer_user_id,
-      },
-    });
-
-    if (!wallet) {
-      throw new ServiceError('Wallet not found', HttpStatus.NOT_FOUND);
-    }
+    const user = await this.getUserById(referral.referrer_user_id);
 
     const earnedPoints = BigNumber(points)
       .multipliedBy(activity.percentage)
       .div(100);
 
-    await this.recordPoints({
-      userId: referral.referrer_user_id,
-      walletId: wallet.id,
+    const activityType = activitySlugToActivityType[activity.slug];
+
+    return await this.recordPoints({
+      userId: user.id,
+      walletId: user.wallet.id,
+      walletAddress: user.wallet_address,
       activityId: activity.id,
+      activityType,
       description: activity.name,
-      availableBalancePoints: earnedPoints.toNumber(),
-      totalBalancePoints: earnedPoints.toNumber(),
       points: earnedPoints.toNumber(),
     });
   }
@@ -394,34 +428,145 @@ export class EarnService {
   private async recordPoints({
     userId,
     walletId,
+    walletAddress,
     activityId,
+    activityType,
     description,
-    availableBalancePoints,
-    totalBalancePoints,
     points,
   }: RecordPoint) {
-    await this.walletRepository.updateOne(
-      { id: walletId, user_id: userId },
-      {
-        $inc: {
-          available_balance: availableBalancePoints,
-          total_balance: totalBalancePoints,
-        },
-      },
-    );
+    try {
+      await Promise.all([
+        this.contractService.recordPoints(walletAddress, points, activityType),
+        this.walletRepository.updateOne(
+          { id: walletId, user_id: userId },
+          {
+            $inc: {
+              total_balance: points,
+            },
+          },
+        ),
+        this.transactionRepository.save({
+          id: uuidv4(),
+          wallet_id: walletId,
+          activity_id: activityId,
+          points,
+          description: `${points} points earned for ${description}`,
+          status: TransactionStatus.SUCCESS,
+          type: TransactionType.EARN,
+        }),
+      ]);
 
-    await this.transactionRepository.save({
-      id: uuidv4(),
-      wallet_id: walletId,
-      activity_id: activityId,
-      points,
-      description: `${points} points earned for ${description}`,
-      status: TransactionStatus.SUCCESS,
-      type: TransactionType.EARN,
-    });
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error recording points for user ${userId} and wallet ${walletId}`,
+        error.stack,
+      );
+
+      return false;
+    }
   }
 
-  async seedActivities() {
+  private async tokenBridgeListener(): Promise<void> {
+    this.logger.log(`Listening for token bridging events`);
+
+    const contract = this.contractService.getContract(
+      env.contract.bridgeAddress,
+      [
+        'event ERC20BridgeFinalized(address indexed localToken, address indexed remoteToken, address indexed from, address to, uint256 amount, bytes extraData)',
+      ],
+    );
+
+    contract.on(
+      'ERC20BridgeFinalized',
+      async (
+        localToken: string,
+        remoteToken: string,
+        from: string,
+        to: string,
+        amount: ethers.BigNumber,
+        extraData: string,
+      ) => {
+        this.logger.log(`ERC20BridgeFinalized event emitted for ${localToken}`);
+      },
+    );
+  }
+
+  private async liquidityMigrationListener(): Promise<void> {
+    this.logger.log(`Listening for liquidity migration events`);
+
+    const contract = this.contractService.getContract(
+      env.contract.bridgeAddress,
+      [
+        'event LiquidityDeposited(address user, address token0, address token1, uint256 amount0, uint256 amount1, uint256 lpTokens)',
+      ],
+    );
+
+    contract.on(
+      'LiquidityDeposited',
+      async (
+        user: string,
+        token0: string,
+        token1: string,
+        amount0: ethers.BigNumber,
+        amount1: ethers.BigNumber,
+        lpTokens: ethers.BigNumber,
+      ) => {
+        this.logger.log(
+          `LiquidityDeposited event emitted ${user} ${token0} ${token1} ${amount0} ${amount1} ${lpTokens}`,
+        );
+
+        const isETH = token0 === Token.BASE_WETH || token1 === Token.BASE_WETH;
+        const ethAmount = token0 === Token.BASE_WETH ? amount0 : amount1;
+
+        if (isETH) {
+          const points =
+            await this.calculateETHLiquidityMigrationPoints(ethAmount);
+
+          if (points <= 0) {
+            return;
+          }
+
+          const authUser = await this.getUserByWalletAddress(user);
+
+          await this.recordActivityPoints({
+            userId: authUser.id,
+            walletId: authUser.wallet.id,
+            walletAddress: authUser.wallet_address,
+            activitySlug: ActivitySlug.LIQUIDITY_MIGRATION,
+            points,
+          });
+        } else {
+          const authUser = await this.getUserByWalletAddress(user);
+
+          const points = amount0.mul(1000);
+          await this.recordActivityPoints({
+            userId: authUser.id,
+            walletId: authUser.wallet.id,
+            walletAddress: authUser.wallet_address,
+            activitySlug: ActivitySlug.LIQUIDITY_MIGRATION,
+            points: points.toNumber(),
+          });
+        }
+      },
+    );
+  }
+
+  private async calculateETHLiquidityMigrationPoints(amount: ethers.BigNumber) {
+    const ethPriceUSD = await this.analyticService.getEthPriceInUsd();
+    const amountInEth = ethers.utils.parseEther(amount.toString());
+    const amountInUSD = amountInEth.mul(ethPriceUSD);
+
+    if (amountInUSD.lt(1)) {
+      return 0;
+    }
+
+    const points = amountInUSD.mul(1000);
+
+    return points.toNumber();
+  }
+
+  private async seedActivities() {
     const activities = [
       {
         id: uuidv4(),
@@ -511,7 +656,7 @@ export class EarnService {
       {
         id: uuidv4(),
         name: 'Liquidity Migration',
-        slug: ActivitySlug.LIQUIDITY,
+        slug: ActivitySlug.LIQUIDITY_MIGRATION,
         points: 1000,
         description:
           'Users who migrate Liquidity will receive 1000 points for every $1 worth of Liquidity migrated ',
@@ -526,7 +671,7 @@ export class EarnService {
               '2.5x Migrate point multipliers for users who opt in to stake LP tokens.',
             multiplier: 2.5,
             is_active: true,
-            activity_slug: ActivitySlug.LIQUIDITY,
+            activity_slug: ActivitySlug.LIQUIDITY_MIGRATION,
           },
         ],
       },
@@ -545,5 +690,59 @@ export class EarnService {
     });
 
     await Promise.all(activityPromises);
+  }
+
+  async getUserByWalletAddress(walletAddress: string) {
+    const user = await this.sharedUserRepository.findOne({
+      where: {
+        wallet_address: walletAddress,
+      },
+    });
+
+    if (!user) {
+      throw new ServiceError('User not found', HttpStatus.NOT_FOUND);
+    }
+
+    const wallet = await this.walletRepository.findOne({
+      where: {
+        user_id: user.id,
+      },
+    });
+
+    if (!wallet) {
+      throw new ServiceError('Wallet not found', HttpStatus.NOT_FOUND);
+    }
+
+    return {
+      ...user,
+      wallet,
+    };
+  }
+
+  async getUserById(id: string) {
+    const user = await this.sharedUserRepository.findOne({
+      where: {
+        id,
+      },
+    });
+
+    if (!user) {
+      throw new ServiceError('User not found', HttpStatus.NOT_FOUND);
+    }
+
+    const wallet = await this.walletRepository.findOne({
+      where: {
+        user_id: user.id,
+      },
+    });
+
+    if (!wallet) {
+      throw new ServiceError('Wallet not found', HttpStatus.NOT_FOUND);
+    }
+
+    return {
+      ...user,
+      wallet,
+    };
   }
 }
