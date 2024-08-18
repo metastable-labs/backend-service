@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ethers } from 'ethers';
 import { env } from '../../config/env';
+import { ActivityType } from '../../../modules/earn/enums/earn.enum';
 
 @Injectable()
 export class ContractService {
@@ -17,8 +18,16 @@ export class ContractService {
     return this.httpsProviders[env.blockchain.rpcUrl];
   }
 
-  getContract(address: string, abi: string[]): ethers.Contract {
-    return new ethers.Contract(address, abi, this.getProvider());
+  getProviderWithSigner(wallet: ethers.Wallet) {
+    return wallet.connect(this.getProvider());
+  }
+
+  getContract(
+    address: string,
+    abi: string[],
+    provider?: ethers.Wallet,
+  ): ethers.Contract {
+    return new ethers.Contract(address, abi, provider || this.getProvider());
   }
 
   getTokenTransferEventAbi() {
@@ -111,5 +120,35 @@ export class ContractService {
     await transaction.wait();
 
     return transaction.from;
+  }
+
+  async recordPoints(
+    address: string,
+    amount: number,
+    activityType: ActivityType,
+  ): Promise<boolean> {
+    try {
+      const ABI = [
+        'function recordPoints(address user, uint256 pointsAmount, uint8 activityType) external',
+      ];
+
+      const wallet = new ethers.Wallet(
+        env.admin.privateKey,
+        this.getProvider(),
+      );
+      const provider = this.getProviderWithSigner(wallet);
+
+      const contract = this.getContract(
+        env.contract.pointAddress,
+        ABI,
+        provider,
+      );
+
+      await contract.recordPoints(address, amount, activityType);
+
+      return true;
+    } catch (error) {
+      return false;
+    }
   }
 }
