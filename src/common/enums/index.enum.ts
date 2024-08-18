@@ -9,3 +9,7 @@ export enum FileMimes {
 export enum SocialType {
   FARCASTER = 'farcaster',
 }
+
+export enum Token {
+  BASE_WETH = '0x4200000000000000000000000000000000000006',
+}
