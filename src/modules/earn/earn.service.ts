@@ -487,7 +487,9 @@ export class EarnService {
         amount: ethers.BigNumber,
         extraData: string,
       ) => {
-        this.logger.log(`ERC20BridgeFinalized event emitted for ${localToken}`);
+        this.logger.log(
+          `ERC20BridgeFinalized event emitted for ${localToken} ${remoteToken} ${from} ${to} ${amount} ${extraData}`,
+        );
       },
     );
   }

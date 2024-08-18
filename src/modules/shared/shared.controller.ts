@@ -1,4 +1,15 @@
-import { Body, ClassSerializerInterceptor, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  Body,
+  ClassSerializerInterceptor,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SharedService } from './shared.service';
 import { ErrorResponse } from '../../common/responses';
@@ -31,7 +42,10 @@ export class SharedController {
   @UseGuards(PrivyGuard)
   @Post('auth')
   async auth(@Req() request: SharedAuthRequest, @Body() body: AuthDto) {
-    return this.sharedService.authenticate(request.body.userId, body.referral_code);
+    return this.sharedService.authenticate(
+      request.body.userId,
+      body.referral_code,
+    );
   }
 
   @ApiResponse({
