@@ -21,9 +21,6 @@ export class SharedWallet {
   id: string;
 
   @Column()
-  available_balance: number;
-
-  @Column()
   total_balance: number;
 
   @Column()
