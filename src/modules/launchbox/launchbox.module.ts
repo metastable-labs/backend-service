@@ -18,7 +18,6 @@ import {
 import { LaunchboxController } from './launchbox.controller';
 import { LaunchboxService } from './launchbox.service';
 import { AnalyticModule } from '../../common/helpers/analytic/analytic.module';
-import { SharedModule } from '../shared/shared.module';
 import { ApiKeyStrategy } from '../../common/strategies/api-key.strategy';
 import { SharedUser } from '../shared/entities/user.entity';
 
@@ -39,7 +38,6 @@ import { SharedUser } from '../shared/entities/user.entity';
     CloudinaryModule,
     FarcasterModule,
     ContractModule,
-    SharedModule,
     AnalyticModule,
   ],
   providers: [LaunchboxService, ApiKeyStrategy],

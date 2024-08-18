@@ -87,7 +87,6 @@ export class LaunchboxService {
     private readonly cloudinaryService: CloudinaryService,
     private readonly farcasterService: FarcasterService,
     private readonly contractService: ContractService,
-    private readonly sharedService: SharedService,
     private readonly analyticService: AnalyticService,
   ) {}
 
@@ -364,7 +363,7 @@ export class LaunchboxService {
         take: Number(query.take),
       });
 
-      const ethPriceUSD = await this.getEthPriceInUsd();
+      const ethPriceUSD = await this.analyticService.getEthPriceInUsd();
 
       const formattedTokensPromises = launchboxTokens.map(async (token) => {
         const transactionData = await this.getMoreTransactionData(
@@ -432,7 +431,7 @@ export class LaunchboxService {
         throw new ServiceError('Token not found', HttpStatus.NOT_FOUND);
       }
 
-      const ethPriceUSD = await this.getEthPriceInUsd();
+      const ethPriceUSD = await this.analyticService.getEthPriceInUsd();
       const transactionData = await this.getMoreTransactionData(
         launchboxToken.id,
         launchboxToken.token_address,
@@ -810,7 +809,7 @@ export class LaunchboxService {
 
   async getCoinPrice(): Promise<IResponse | ServiceError> {
     try {
-      const price = await this.getEthPriceInUsd();
+      const price = await this.analyticService.getEthPriceInUsd();
 
       return successResponse({
         status: true,
@@ -1101,21 +1100,6 @@ export class LaunchboxService {
     }
 
     return apiKey;
-  }
-
-  private async getEthPriceInUsd(): Promise<number> {
-    try {
-      const ethPrice = await this.sharedService.getEthPriceInUsd();
-
-      return ethPrice;
-    } catch (error) {
-      this.logger.error('An error occurred while fetching the price.', error);
-
-      throw new ServiceError(
-        'An error occurred while fetching the price. Please try again later.',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
   }
 
   private getContract(contractAddress: string, abi: string[]): ethers.Contract {
