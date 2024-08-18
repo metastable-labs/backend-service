@@ -54,6 +54,12 @@ export const env = {
   },
   contract: {
     nftAddress: envVar.get('NFT_CONTRACT_ADDRESS').required().asString(),
+    bridgeAddress: envVar.get('BRIDGE_CONTRACT_ADDRESS').required().asString(),
+    liquidityMigrationAddress: envVar
+      .get('LIQUIDITY_MIGRATION_CONTRACT_ADDRESS')
+      .required()
+      .asString(),
+    pointAddress: envVar.get('POINT_CONTRACT_ADDRESS').required().asString(),
   },
   client: {
     origin: envVar.get('CLIENT_ORIGIN').required().asString(),
@@ -75,5 +81,6 @@ export const env = {
   },
   admin: {
     key: envVar.get('ADMIN_KEY').required().asString(),
+    privateKey: envVar.get('ADMIN_PRIVATE_KEY').required().asString(),
   },
 };
