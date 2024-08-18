@@ -1,6 +1,7 @@
 import { ethers, utils } from 'ethers';
 import * as EthDater from 'ethereum-block-by-date';
 import { Injectable, Logger } from '@nestjs/common';
+import { chromium } from 'playwright';
 import {
   CacheEntry,
   PeriodKey,
@@ -11,17 +12,14 @@ import {
 import { ContractService } from '../contract/contract.service';
 import { Period } from './enums/analytic.enum';
 import { getDateRangeFromKey, getPeriod } from '../../utils';
-import { SharedService } from '../../../modules/shared/shared.service';
+import { env } from '../../../common/config/env';
 
 @Injectable()
 export class AnalyticService {
   private cache: Map<string, CacheEntry> = new Map();
   private cacheDuration = 5 * 60 * 1000; // 5m Cache duration in milliseconds
 
-  constructor(
-    private readonly contractService: ContractService,
-    private readonly sharedService: SharedService,
-  ) {}
+  constructor(private readonly contractService: ContractService) {}
 
   private readonly logger = new Logger(AnalyticService.name);
 
@@ -45,14 +43,14 @@ export class AnalyticService {
     return `${contractAddress}-${period}-${roundedStart.getTime()}-${roundedEnd.getTime()}`;
   }
 
-  private setCacheEntry(key: string, data: PriceAnalytics): void {
+  private setCacheEntry(key: string, data: PriceAnalytics | number): void {
     this.cache.set(key, {
       data,
       expiry: Date.now() + this.cacheDuration,
     });
   }
 
-  private getCacheEntry(key: string): PriceAnalytics | null {
+  private getCacheEntry(key: string): PriceAnalytics | number | null {
     const entry = this.cache.get(key);
     if (entry && entry.expiry > Date.now()) {
       return entry.data;
@@ -77,7 +75,7 @@ export class AnalyticService {
     );
     const cachedResult = this.getCacheEntry(cacheKey);
     if (cachedResult) {
-      return cachedResult;
+      return cachedResult as PriceAnalytics;
     }
 
     const provider = this.getProvider();
@@ -101,7 +99,7 @@ export class AnalyticService {
 
     const dataPoints: PriceDataPoint[] = [];
 
-    const ethPriceUSD = await this.sharedService.getEthPriceInUsd();
+    const ethPriceUSD = await this.getEthPriceInUsd();
 
     for (const blockItem of blocks) {
       try {
@@ -167,5 +165,39 @@ export class AnalyticService {
     const period = getPeriod(periodKey);
 
     return this.getPriceAnalytics(contractAddress, period, startDate, endDate);
+  }
+
+  async getEthPriceInUsd(): Promise<number> {
+    try {
+      const cacheKey = 'eth-price-in-usd';
+      const cachedResult = this.getCacheEntry(cacheKey);
+      if (cachedResult) {
+        return cachedResult as number;
+      }
+
+      const browser = await chromium.launch({ headless: true });
+      const page = await browser.newPage();
+      await page.goto(env.blockchainPrice.url, {
+        waitUntil: 'domcontentloaded',
+      });
+
+      const ethPrice = await page.$eval('.sc-bb87d037-10', (el) =>
+        el.textContent ? el.textContent.trim() : '',
+      );
+      const ethPriceInNumber = parseFloat(ethPrice.replace(/[^0-9.-]+/g, ''));
+
+      await browser.close();
+
+      this.setCacheEntry(cacheKey, ethPriceInNumber);
+
+      return ethPriceInNumber;
+    } catch (error) {
+      this.logger.error(
+        `SharedService.getEthPriceInUsd: Error while fetching ETH price`,
+        error,
+      );
+
+      return 0;
+    }
   }
 }
