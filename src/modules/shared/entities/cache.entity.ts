@@ -1,7 +1,14 @@
-import { Column, CreateDateColumn, Entity, ObjectIdColumn, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  ObjectIdColumn,
+  PrimaryColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
-@Entity('shared_cache')
-export class SharedCache {
+@Entity('cache')
+export class Cache {
   @ObjectIdColumn()
   _id: string;
 

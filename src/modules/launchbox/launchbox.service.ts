@@ -63,7 +63,7 @@ import {
   FileUploadFolder,
   TransactionType,
 } from './enums/launchbox.enum';
-import { SharedUser } from '../shared/entities/user.entity';
+import { User } from '../shared/entities/user.entity';
 
 @Injectable()
 export class LaunchboxService {
@@ -80,8 +80,8 @@ export class LaunchboxService {
     private readonly incentiveChannelRespository: MongoRepository<IncentiveChannel>,
     @InjectRepository(LeaderboardParticipant)
     private readonly leaderboardParticipantRepository: MongoRepository<LeaderboardParticipant>,
-    @InjectRepository(SharedUser)
-    private readonly sharedUserRepository: MongoRepository<SharedUser>,
+    @InjectRepository(User)
+    private readonly userRepository: MongoRepository<User>,
     @InjectRepository(LaunchboxApiCredential)
     private readonly launchboxApiKeyRepository: MongoRepository<LaunchboxApiCredential>,
     private readonly cloudinaryService: CloudinaryService,
@@ -108,7 +108,7 @@ export class LaunchboxService {
   }
 
   async create(
-    user: SharedUser,
+    user: User,
     body: CreateDto,
     file: Express.Multer.File,
   ): Promise<IResponse | ServiceError> {
@@ -218,7 +218,7 @@ export class LaunchboxService {
   }
 
   async updateOne(
-    user: SharedUser,
+    user: User,
     id: string,
     body: UpdateDto,
   ): Promise<IResponse | ServiceError> {
@@ -763,7 +763,7 @@ export class LaunchboxService {
   }
 
   async getChannelsByAddress(
-    user: SharedUser,
+    user: User,
     limit: number,
   ): Promise<IResponse | ServiceError> {
     try {
@@ -836,7 +836,7 @@ export class LaunchboxService {
   }
 
   async updateWebsiteBuilder(
-    user: SharedUser,
+    user: User,
     id: string,
     body: WebsiteBuilderDto,
     files: {
@@ -1386,7 +1386,7 @@ export class LaunchboxService {
   }
 
   async activateLeaderboard(
-    user: SharedUser,
+    user: User,
     token_id: string,
   ): Promise<IResponse | ServiceError> {
     try {
@@ -1463,7 +1463,7 @@ export class LaunchboxService {
   }
 
   async earnPoints(
-    user: SharedUser,
+    user: User,
     token_id: string,
   ): Promise<IResponse | ServiceError> {
     try {
@@ -1720,7 +1720,7 @@ export class LaunchboxService {
   }
 
   async addIncentiveAction(
-    user: SharedUser,
+    user: User,
     token_id: string,
     actionsArray: ActionsArrayDTO,
   ): Promise<IResponse | ServiceError> {
@@ -1828,7 +1828,7 @@ export class LaunchboxService {
   }
 
   async removeIncentiveAction(
-    user: SharedUser,
+    user: User,
     token_id: string,
     action_id: string,
   ): Promise<IResponse | ServiceError> {
@@ -2245,9 +2245,9 @@ export class LaunchboxService {
   }
 
   private async fetchOrCreateUser(
-    user: SharedUser,
+    user: User,
     transactionHash: string,
-  ): Promise<SharedUser> {
+  ): Promise<User> {
     if (!user.externalApiCall) {
       return user;
     }
@@ -2255,7 +2255,7 @@ export class LaunchboxService {
     const deployerAddress =
       await this.contractService.getTokenDeployerAddress(transactionHash);
 
-    const userExists = await this.sharedUserRepository.findOne({
+    const userExists = await this.userRepository.findOne({
       where: {
         wallet_address: deployerAddress,
       },
@@ -2265,7 +2265,7 @@ export class LaunchboxService {
       return userExists;
     }
 
-    const newUser = this.sharedUserRepository.create({
+    const newUser = this.userRepository.create({
       id: uuidv4(),
       reference: user.apiCredential?.id,
       auth_id: user.apiCredential?.id,
@@ -2274,6 +2274,6 @@ export class LaunchboxService {
       is_active: true,
     });
 
-    return this.sharedUserRepository.save(newUser);
+    return this.userRepository.save(newUser);
   }
 }

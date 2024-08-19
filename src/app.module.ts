@@ -24,7 +24,6 @@ import { HealthModule } from './modules/health/health.module';
 import { LaunchboxModule } from './modules/launchbox/launchbox.module';
 import { LiquidityModule } from './modules/liquidity/liquidity.module';
 import { MigrationModule } from './modules/migration/migration.module';
-import { UserModule } from './modules/user/user.module';
 
 const envPath = getEnvPath();
 @Module({
@@ -43,7 +42,6 @@ const envPath = getEnvPath();
       ],
     }),
     HealthModule,
-    UserModule,
     MigrationModule,
     AuthModule,
     GithubModule,

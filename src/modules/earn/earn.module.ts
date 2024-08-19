@@ -3,23 +3,23 @@ import { EarnService } from './earn.service';
 import { EarnController } from './earn.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Activity } from './entities/activity.entity';
-import { SharedReferral } from '../shared/entities/referral.entity';
+import { Referral } from '../shared/entities/referral.entity';
 import { Transaction } from './entities/transaction.entity';
 import { ContractModule } from '../../common/helpers/contract/contract.module';
-import { SharedWallet } from '../shared/entities/wallet.entity';
-import { SharedUser } from '../shared/entities/user.entity';
+import { Wallet } from '../shared/entities/wallet.entity';
+import { User } from '../shared/entities/user.entity';
 import { AnalyticModule } from '../../common/helpers/analytic/analytic.module';
-import { SharedCache } from '../shared/entities/cache.entity';
+import { Cache } from '../shared/entities/cache.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       Activity,
-      SharedReferral,
+      Referral,
       Transaction,
-      SharedWallet,
-      SharedUser,
-      SharedCache,
+      Wallet,
+      User,
+      Cache,
     ]),
     ContractModule,
     AnalyticModule,

@@ -6,8 +6,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { GithubService } from '../../common/helpers/github/github.service';
 import { IResponse } from '../../common/interfaces/response.interface';
 import { ServiceError } from '../../common/errors/service.error';
-import { User } from '../user/entities/user.entity';
 import { successResponse } from '../../common/responses/success.helper';
+import { User } from '../shared/entities/user.entity';
 
 @Injectable()
 export class AuthService {

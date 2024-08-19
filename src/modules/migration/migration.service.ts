@@ -2,7 +2,6 @@ import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { validateSync } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { User } from '../user/entities/user.entity';
 import { IResponse } from '../../common/interfaces/response.interface';
 import { ServiceError } from '../../common/errors/service.error';
 import { CloudinaryService } from '../../common/helpers/cloudinary/cloudinary.service';
@@ -15,6 +14,7 @@ import { Chain, Migrate, PullRequest } from './interfaces/migration.interface';
 import { successResponse } from '../../common/responses/success.helper';
 import { PrStatus, Status } from './enums/migration.enum';
 import { HttpService } from '@nestjs/axios';
+import { User } from '../shared/entities/user.entity';
 
 @Injectable()
 export class MigrationService {

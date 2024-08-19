@@ -15,8 +15,8 @@ import {
   Migrate,
   PullRequest,
 } from '../../../modules/migration/interfaces/migration.interface';
-import { GithubAuth } from '../../../modules/user/interfaces/user.interface';
-import { PrStatus } from 'src/modules/migration/enums/migration.enum';
+import { PrStatus } from '../../../modules/migration/enums/migration.enum';
+import { GithubAuth } from '../../../modules/shared/interfaces/shared.interface';
 
 @Injectable()
 export class GithubService {

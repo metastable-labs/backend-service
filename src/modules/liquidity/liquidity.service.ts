@@ -6,8 +6,8 @@ import { Liquidity } from './entities/liquidity.entity';
 import { CreateDto } from './dtos/liquidity.dto';
 import { IResponse } from '../../common/interfaces/response.interface';
 import { ServiceError } from '../../common/errors/service.error';
-import { User } from '../user/entities/user.entity';
 import { successResponse } from 'src/common/responses/success.helper';
+import { User } from '../shared/entities/user.entity';
 
 @Injectable()
 export class LiquidityService {
