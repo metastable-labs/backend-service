@@ -12,7 +12,7 @@ export class SharedCache {
   key: string;
 
   @Column({ type: 'json' })
-  value: any;
+  value: Record<string, string | number | boolean>;
 
   @Column()
   expires: number;

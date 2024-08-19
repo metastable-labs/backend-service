@@ -322,7 +322,9 @@ export class EarnService {
         const newCache = this.cacheRepository.create({
           id: uuidv4(),
           key: PROCESS_PENDING_BLANCE_CACHE_KEY,
-          value: true,
+          value: {
+            status: true,
+          },
           expires: Date.now() + PROCESS_PENDING_BLANCE_CACHE_TTL,
         });
         await this.cacheRepository.save(newCache);
