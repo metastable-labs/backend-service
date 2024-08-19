@@ -21,7 +21,13 @@ export class SharedWallet {
   id: string;
 
   @Column()
+  wallet_address: string;
+
+  @Column()
   total_balance: number;
+
+  @Column()
+  pending_balance: number;
 
   @Column()
   is_active: boolean;

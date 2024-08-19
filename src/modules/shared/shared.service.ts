@@ -106,7 +106,7 @@ export class SharedService {
       });
 
       await this.sharedUserRepository.save(newUser);
-      await this.createWallet(newUser.id);
+      await this.createWallet(newUser.id, walletAddress);
 
       if (referrerUser) {
         await this.referralRepository.save({
@@ -218,7 +218,7 @@ export class SharedService {
     );
   }
 
-  private async createWallet(userId: string): Promise<SharedWallet> {
+  private async createWallet(userId: string, walletAddress: string): Promise<SharedWallet> {
     const wallet = await this.walletRepository.findOne({
       where: {
         user_id: userId,
@@ -229,7 +229,9 @@ export class SharedService {
       const newWallet = this.walletRepository.create({
         id: uuidv4(),
         user_id: userId,
+        wallet_address: walletAddress,
         total_balance: 0,
+        pending_balance: 0,
         is_active: true,
       });
 
