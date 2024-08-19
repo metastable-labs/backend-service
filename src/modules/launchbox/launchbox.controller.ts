@@ -41,9 +41,8 @@ import {
   RankingPaginateDto,
 } from './dtos/launchbox.dto';
 import { FileMimes } from '../../common/enums/index.enum';
-import { LaunchboxAuthGuard } from '../../common/guards/lauchbox.auth.guard';
-import { PrivyGuard } from '../../common/guards/privy.guard';
-import { LaunchboxAuthRequest } from '../../common/interfaces/request.interface';
+import { SharedAuthGuard } from '../../common/guards/shared.auth.guard';
+import { SharedAuthRequest } from '../../common/interfaces/request.interface';
 import { ErrorResponse } from '../../common/responses';
 import { flattenValidationErrors } from '../../common/utils';
 import {
@@ -61,48 +60,6 @@ export class LaunchboxController {
   constructor(private readonly launchboxService: LaunchboxService) {}
 
   @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Authenticated successfully',
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Unauthorized request',
-    type: ErrorResponse,
-  })
-  @ApiResponse({
-    status: HttpStatus.INTERNAL_SERVER_ERROR,
-    description: 'An error occurred while authenticating',
-    type: ErrorResponse,
-  })
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(PrivyGuard)
-  @Post('auth')
-  async auth(@Req() request: LaunchboxAuthRequest) {
-    return this.launchboxService.authenticate(request.body.userId);
-  }
-
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Authenticated session',
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Unauthorized request',
-    type: ErrorResponse,
-  })
-  @ApiResponse({
-    status: HttpStatus.INTERNAL_SERVER_ERROR,
-    description: 'An error occurred while authenticating the session',
-    type: ErrorResponse,
-  })
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(LaunchboxAuthGuard)
-  @Get('auth/session')
-  async authSession(@Req() request: LaunchboxAuthRequest) {
-    return this.launchboxService.authSession(request.user);
-  }
-
-  @ApiResponse({
     status: HttpStatus.CREATED,
     description: 'Token created successfully',
   })
@@ -116,11 +73,11 @@ export class LaunchboxController {
     description: 'Token already exists',
     type: ErrorResponse,
   })
-  @UseGuards(AuthGuard(['launchbox-auth', 'api-key']))
+  @UseGuards(AuthGuard(['shared-auth', 'api-key']))
   @UseInterceptors(FileInterceptor('logo'))
   @Post('/tokens')
   async create(
-    @Req() req: LaunchboxAuthRequest,
+    @Req() req: SharedAuthRequest,
     @Body() createDto: CreateDto,
     @UploadedFile(
       new ParseFilePipe({
@@ -176,10 +133,10 @@ export class LaunchboxController {
     description: 'Token not found',
     type: ErrorResponse,
   })
-  @UseGuards(AuthGuard(['launchbox-auth', 'api-key']))
+  @UseGuards(AuthGuard(['shared-auth', 'api-key']))
   @Patch('/tokens/:id')
   async updateOne(
-    @Req() req: LaunchboxAuthRequest,
+    @Req() req: SharedAuthRequest,
     @Param('id') id: string,
     @Body() body: UpdateDto,
   ) {
@@ -330,7 +287,7 @@ export class LaunchboxController {
       'An error occurred while creating website builder. Please try again later.',
     type: ErrorResponse,
   })
-  @UseGuards(LaunchboxAuthGuard)
+  @UseGuards(SharedAuthGuard)
   @UseInterceptors(
     FileFieldsInterceptor([
       { name: 'logo', maxCount: 1 },
@@ -341,7 +298,7 @@ export class LaunchboxController {
   @HttpCode(HttpStatus.OK)
   @Patch('/tokens/:id/website-builder')
   async updateWebsiteBuilder(
-    @Req() req: LaunchboxAuthRequest,
+    @Req() req: SharedAuthRequest,
     @Param('id') id: string,
     @Body() body: Record<string, string>,
     @UploadedFiles(
@@ -405,10 +362,10 @@ export class LaunchboxController {
     description: 'An error occurred while fetching the channels',
     type: ErrorResponse,
   })
-  @UseGuards(LaunchboxAuthGuard)
+  @UseGuards(SharedAuthGuard)
   @Get('/channels/:address')
   async getChannelsByAddress(
-    @Req() req: LaunchboxAuthRequest,
+    @Req() req: SharedAuthRequest,
     @Query() query: PaginateDto,
   ) {
     return this.launchboxService.getChannelsByAddress(
@@ -469,11 +426,11 @@ export class LaunchboxController {
     type: ErrorResponse,
   })
   @Post('/tokens/:id/incentives')
-  @UseGuards(LaunchboxAuthGuard)
+  @UseGuards(SharedAuthGuard)
   async activateIncentive(
     @Param('id') token_id: string,
     @Body() actions: ActionsArrayDTO,
-    @Req() req: LaunchboxAuthRequest,
+    @Req() req: SharedAuthRequest,
   ) {
     return this.launchboxService.addIncentiveAction(
       req.user,
@@ -487,11 +444,11 @@ export class LaunchboxController {
     description: 'Remove Configured Incentive Action',
   })
   @Delete('/tokens/:id/incentives')
-  @UseGuards(LaunchboxAuthGuard)
+  @UseGuards(SharedAuthGuard)
   async removeIncentive(
     @Param('id') token_id: string,
     @Body() { action_id }: RemoveActionDTO,
-    @Req() req: LaunchboxAuthRequest,
+    @Req() req: SharedAuthRequest,
   ) {
     return this.launchboxService.removeIncentiveAction(
       req.user,
@@ -519,8 +476,8 @@ export class LaunchboxController {
     type: ErrorResponse,
   })
   @Post('/tokens/:id/earn')
-  @UseGuards(LaunchboxAuthGuard)
-  async earnPoints(@Req() req: LaunchboxAuthRequest, @Param('id') id: string) {
+  @UseGuards(SharedAuthGuard)
+  async earnPoints(@Req() req: SharedAuthRequest, @Param('id') id: string) {
     return this.launchboxService.earnPoints(req.user, id);
   }
 
@@ -567,10 +524,10 @@ export class LaunchboxController {
     description: 'An error occurred while fetching the leaderboard',
     type: ErrorResponse,
   })
-  @UseGuards(LaunchboxAuthGuard)
+  @UseGuards(SharedAuthGuard)
   @Put('/tokens/:id/leaderboard/status')
   async activateTokenLeaderboard(
-    @Req() req: LaunchboxAuthRequest,
+    @Req() req: SharedAuthRequest,
     @Param('id') id: string,
   ) {
     return this.launchboxService.activateLeaderboard(req.user, id);

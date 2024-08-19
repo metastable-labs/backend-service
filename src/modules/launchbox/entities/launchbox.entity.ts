@@ -18,43 +18,6 @@ import {
 import { EncryptedData } from '../../../common/interfaces/index.interface';
 
 @Entity({
-  name: 'launchbox_users',
-})
-export class LaunchboxUser {
-  @Exclude()
-  @ObjectIdColumn({ select: false })
-  _id: ObjectId;
-
-  @PrimaryColumn()
-  id: string;
-
-  @Exclude()
-  @Column()
-  reference: string;
-
-  @Column()
-  auth_id: string;
-
-  @Column()
-  auth_type: string;
-
-  @Column()
-  wallet_address: string;
-
-  @Column()
-  is_active: boolean;
-
-  @CreateDateColumn()
-  created_at: Date;
-
-  @UpdateDateColumn()
-  updated_at: Date;
-
-  externalApiCall?: boolean;
-  apiCredential?: LaunchboxApiCredential;
-}
-
-@Entity({
   name: 'launchbox_tokens',
 })
 export class LaunchboxToken {

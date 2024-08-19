@@ -1,16 +1,16 @@
-import {
-  IsEthereumAddress,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsNumber, IsOptional } from 'class-validator';
 
-export class RegisterDto {
-  @IsNotEmpty()
-  @IsEthereumAddress()
-  connected_address: string;
+export class PaginateDto {
+  @IsOptional()
+  @Transform(({ value }) =>
+    parseInt(value.trim()) > 50 ? 50 : parseInt(value.trim()),
+  )
+  @IsNumber()
+  take = 50;
 
   @IsOptional()
-  @IsString()
-  referral_code: string;
+  @Transform(({ value }) => parseInt(value.trim()))
+  @IsNumber()
+  skip = 0;
 }

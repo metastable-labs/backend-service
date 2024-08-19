@@ -9,10 +9,10 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { ActivitySlug } from '../enums/earn.enum';
-import { Multiplier } from './multiplier.entity';
+import { Multiplier } from '../interfaces/earn.interface';
 
 @Entity({
-  name: 'activities',
+  name: 'earn_activities',
 })
 export class Activity {
   @Exclude()
@@ -32,17 +32,18 @@ export class Activity {
   description: string;
 
   @Column()
-  points_value: number;
+  points: number;
 
   @Column({ default: false })
   is_percentage_based: boolean;
 
   @Column({ default: 0 })
-  percentage_value: number;
+  percentage: number;
 
   @Column()
   is_active: boolean;
 
+  @Column()
   multipliers: Multiplier[];
 
   @CreateDateColumn()

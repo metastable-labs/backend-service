@@ -15,7 +15,7 @@ import { ContractModule } from './common/helpers/contract/contract.module';
 import { FarcasterModule } from './common/helpers/farcaster/farcaster.module';
 import { GithubModule } from './common/helpers/github/github.module';
 import { PrivyModule } from './common/helpers/privy/privy.module';
-import { SharedModule } from './common/helpers/shared/shared.module';
+import { SharedModule } from './modules/shared/shared.module';
 import { LoggerMiddleware } from './common/middlewares/logger.middleware';
 import { getEnvPath } from './common/utils';
 import { AuthModule } from './modules/auth/auth.module';

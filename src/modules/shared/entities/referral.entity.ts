@@ -10,9 +10,9 @@ import {
 } from 'typeorm';
 
 @Entity({
-  name: 'multipliers',
+  name: 'shared_referrals',
 })
-export class Multiplier {
+export class SharedReferral {
   @Exclude()
   @ObjectIdColumn({ select: false })
   _id: ObjectId;
@@ -21,22 +21,13 @@ export class Multiplier {
   id: string;
 
   @Column()
-  slug: string;
+  code: string;
 
   @Column()
-  description: string;
+  referrer_user_id: string;
 
   @Column()
-  note: string;
-
-  @Column()
-  multiplier: number;
-
-  @Column()
-  is_active: boolean;
-
-  @Column()
-  activity_id: string;
+  referred_user_id: string;
 
   @CreateDateColumn()
   created_at: Date;

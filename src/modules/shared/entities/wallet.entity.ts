@@ -10,28 +10,36 @@ import {
 } from 'typeorm';
 
 @Entity({
-  name: 'referrals',
+  name: 'shared_wallets',
 })
-export class Referral {
+export class SharedWallet {
   @Exclude()
   @ObjectIdColumn({ select: false })
-  _id: ObjectId;
+  _id: ObjectId | undefined;
 
   @PrimaryColumn()
   id: string;
 
   @Column()
-  code: string;
+  wallet_address: string;
 
   @Column()
-  referrer_user_id: string;
+  total_balance: number;
 
   @Column()
-  referred_user_id: string;
+  pending_balance: number;
+
+  @Column()
+  is_active: boolean;
+
+  @Column()
+  user_id: string;
 
   @CreateDateColumn()
   created_at: Date;
 
   @UpdateDateColumn()
   updated_at: Date;
+
+  rank: number;
 }

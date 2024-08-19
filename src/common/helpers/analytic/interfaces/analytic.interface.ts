@@ -14,7 +14,7 @@ export interface PriceAnalytics {
 }
 
 export interface CacheEntry {
-  data: PriceAnalytics;
+  data: PriceAnalytics | number;
   expiry: number;
 }
 

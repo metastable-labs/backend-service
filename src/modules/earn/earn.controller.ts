@@ -1,44 +1,30 @@
 import {
-  Body,
   ClassSerializerInterceptor,
   Controller,
   Get,
+  HttpCode,
   HttpStatus,
-  Param,
   Post,
+  Query,
   Req,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { Request } from 'express';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { EarnService } from './earn.service';
-import { ErrorResponse } from 'src/common/responses';
-import { RegisterDto } from './dtos/earn.dto';
+import { ErrorResponse } from '../../common/responses';
 import { SanitizerGuard } from '../../common/guards/sanitizer.guard';
+import { SharedAuthGuard } from '../../common/guards/shared.auth.guard';
+import { SharedAuthRequest } from '../../common/interfaces/request.interface';
+import { PaginateDto } from './dtos/earn.dto';
+import { AdminGuard } from '../../common/guards/admin.guard';
 
-@ApiTags('Earns')
+@ApiTags('Earnings')
 @UseInterceptors(ClassSerializerInterceptor)
 @UseGuards(SanitizerGuard)
-@Controller('earns')
+@Controller('earnings')
 export class EarnController {
   constructor(private readonly earnService: EarnService) {}
-
-  @ApiResponse({
-    status: HttpStatus.CREATED,
-    description: 'Earn registration successful',
-  })
-  @ApiResponse({
-    status: HttpStatus.INTERNAL_SERVER_ERROR,
-    description: 'Error registering to earn',
-    type: ErrorResponse,
-  })
-  @Post('register')
-  async register(@Req() req: Request, @Body() body: RegisterDto) {
-    const ip = req.clientIp as string;
-
-    return this.earnService.register(body, ip);
-  }
 
   @ApiResponse({
     status: HttpStatus.OK,
@@ -70,29 +56,63 @@ export class EarnController {
 
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Claim NFT earnings successful',
+    description: 'NFT earnings claimed successfully',
   })
   @ApiResponse({
     status: HttpStatus.INTERNAL_SERVER_ERROR,
     description: 'Error claiming NFT earnings',
     type: ErrorResponse,
   })
-  @Post('nft/claim/:address')
-  async claimNFTEarnings(@Param('address') address: string) {
-    return this.earnService.claimNFTEarnings(address);
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(SharedAuthGuard)
+  @Post('nft/claim')
+  async claimNFTEarnings(@Req() req: SharedAuthRequest) {
+    return this.earnService.claimNFTEarnings(req.user);
   }
 
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Get user earns',
+    description: 'Get user earnings',
   })
   @ApiResponse({
     status: HttpStatus.INTERNAL_SERVER_ERROR,
-    description: 'Error getting user earns',
+    description: 'Error getting user earnings',
     type: ErrorResponse,
   })
-  @Get('/:address')
-  getEarns(@Req() req: Request, @Param('address') address: string) {
-    return this.earnService.getEarns(address);
+  @UseGuards(SharedAuthGuard)
+  @Get()
+  getEarnings(@Req() req: SharedAuthRequest) {
+    return this.earnService.getEarnings(req.user);
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Get user  transactions',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'Error getting user transactions',
+    type: ErrorResponse,
+  })
+  @UseGuards(SharedAuthGuard)
+  @Get('transactions')
+  getTransactions(@Req() req: SharedAuthRequest, @Query() query: PaginateDto) {
+    return this.earnService.getTransactions(req.user, query);
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'process pending balances',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'Error processing pending balances',
+    type: ErrorResponse,
+  })
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminGuard)
+  @Post('balances/process')
+  async processPendingBalances() {
+    return this.earnService.processPendingBalances();
   }
 }

@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import Strategy from 'passport-headerapikey';
 import { LaunchboxService } from '../../modules/launchbox/launchbox.service';
-import { LaunchboxAuthRequest } from '../interfaces/request.interface';
+import { SharedAuthRequest } from '../interfaces/request.interface';
 
 type verify = (err: any, data: any, info: any) => void;
 
@@ -12,7 +12,7 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
     super(
       { header: 'x-api-key' },
       true,
-      async (apiKey: string, done: verify, req: LaunchboxAuthRequest) => {
+      async (apiKey: string, done: verify, req: SharedAuthRequest) => {
         return this.validate(apiKey, done, req);
       },
     );
@@ -21,7 +21,7 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
   async validate(
     key: string,
     done: verify,
-    req: LaunchboxAuthRequest,
+    req: SharedAuthRequest,
   ): Promise<any> {
     try {
       if (req?.user) {

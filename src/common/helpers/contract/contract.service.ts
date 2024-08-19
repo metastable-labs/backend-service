@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ethers } from 'ethers';
 import { env } from '../../config/env';
-import * as NftAbi from './abis/Nft.json';
+import { ActivityType } from '../../../modules/earn/enums/earn.enum';
 
 @Injectable()
 export class ContractService {
@@ -9,17 +9,30 @@ export class ContractService {
     [key: string]: ethers.providers.JsonRpcProvider;
   } = {};
 
-  getProvider(): ethers.providers.JsonRpcProvider {
-    if (!this.httpsProviders[env.blockchain.rpcUrl]) {
-      this.httpsProviders[env.blockchain.rpcUrl] =
-        new ethers.providers.JsonRpcProvider(env.blockchain.rpcUrl);
+  private logger = new Logger(ContractService.name);
+
+  getProvider(
+    rpcUrl = env.blockchain.rpcUrl,
+  ): ethers.providers.JsonRpcProvider {
+    if (!this.httpsProviders[rpcUrl]) {
+      this.httpsProviders[rpcUrl] = new ethers.providers.JsonRpcProvider(
+        rpcUrl,
+      );
     }
 
-    return this.httpsProviders[env.blockchain.rpcUrl];
+    return this.httpsProviders[rpcUrl];
   }
 
-  getContract(nftAddress: string): ethers.Contract {
-    return new ethers.Contract(nftAddress, NftAbi, this.getProvider());
+  getProviderWithSigner(wallet: ethers.Wallet, rpcUrl = env.blockchain.rpcUrl) {
+    return wallet.connect(this.getProvider(rpcUrl));
+  }
+
+  getContract(
+    address: string,
+    abi: string[],
+    provider?: ethers.Wallet,
+  ): ethers.Contract {
+    return new ethers.Contract(address, abi, provider || this.getProvider());
   }
 
   getTokenTransferEventAbi() {
@@ -35,8 +48,15 @@ export class ContractService {
     ];
   }
 
-  async getBalance(address: string, nftAddress: string): Promise<number> {
-    const contract = this.getContract(nftAddress);
+  async getNFTBalance(
+    address: string,
+    nftContractAddress: string,
+  ): Promise<number> {
+    const ABI = [
+      'function balanceOf(address account, uint256 id) external view returns (uint256)',
+      'function nextTokenId() external view returns (uint256)',
+    ];
+    const contract = this.getContract(nftContractAddress, ABI);
 
     const nextTokenId = await contract.nextTokenId();
 
@@ -105,5 +125,45 @@ export class ContractService {
     await transaction.wait();
 
     return transaction.from;
+  }
+
+  async recordPoints(
+    address: string,
+    amount: number,
+    activityType: ActivityType,
+  ): Promise<boolean> {
+    try {
+      const ABI = [
+        'function recordPoints(address user, uint256 pointsAmount, uint8 activityType) external',
+      ];
+
+      const wallet = new ethers.Wallet(
+        env.admin.privateKey,
+        this.getProvider(env.blockchain.testnetRpcUrl),
+      );
+      const provider = this.getProviderWithSigner(
+        wallet,
+        env.blockchain.testnetRpcUrl,
+      );
+
+      const contract = this.getContract(
+        env.contract.pointAddress,
+        ABI,
+        provider,
+      );
+
+      const tx = await contract.recordPoints(address, amount, activityType);
+      await tx.wait();
+
+      this.logger.log(
+        `Recorded ${amount} points for ${address} with tx ${tx.hash}`,
+      );
+
+      return true;
+    } catch (error) {
+      this.logger.error('Error recording points', error.stack, 'recordPoints');
+
+      throw error;
+    }
   }
 }
