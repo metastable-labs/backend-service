@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ethers } from 'ethers';
 import { env } from '../../config/env';
 import { ActivityType } from '../../../modules/earn/enums/earn.enum';
@@ -9,17 +9,22 @@ export class ContractService {
     [key: string]: ethers.providers.JsonRpcProvider;
   } = {};
 
-  getProvider(): ethers.providers.JsonRpcProvider {
-    if (!this.httpsProviders[env.blockchain.rpcUrl]) {
-      this.httpsProviders[env.blockchain.rpcUrl] =
-        new ethers.providers.JsonRpcProvider(env.blockchain.rpcUrl);
+  private logger = new Logger(ContractService.name);
+
+  getProvider(
+    rpcUrl = env.blockchain.rpcUrl,
+  ): ethers.providers.JsonRpcProvider {
+    if (!this.httpsProviders[rpcUrl]) {
+      this.httpsProviders[rpcUrl] = new ethers.providers.JsonRpcProvider(
+        rpcUrl,
+      );
     }
 
-    return this.httpsProviders[env.blockchain.rpcUrl];
+    return this.httpsProviders[rpcUrl];
   }
 
-  getProviderWithSigner(wallet: ethers.Wallet) {
-    return wallet.connect(this.getProvider());
+  getProviderWithSigner(wallet: ethers.Wallet, rpcUrl = env.blockchain.rpcUrl) {
+    return wallet.connect(this.getProvider(rpcUrl));
   }
 
   getContract(
@@ -134,9 +139,12 @@ export class ContractService {
 
       const wallet = new ethers.Wallet(
         env.admin.privateKey,
-        this.getProvider(),
+        this.getProvider(env.blockchain.testnetRpcUrl),
       );
-      const provider = this.getProviderWithSigner(wallet);
+      const provider = this.getProviderWithSigner(
+        wallet,
+        env.blockchain.testnetRpcUrl,
+      );
 
       const contract = this.getContract(
         env.contract.pointAddress,
@@ -144,11 +152,18 @@ export class ContractService {
         provider,
       );
 
-      await contract.recordPoints(address, amount, activityType);
+      const tx = await contract.recordPoints(address, amount, activityType);
+      await tx.wait();
+
+      this.logger.log(
+        `Recorded ${amount} points for ${address} with tx ${tx.hash}`,
+      );
 
       return true;
     } catch (error) {
-      return false;
+      this.logger.error('Error recording points', error.stack, 'recordPoints');
+
+      throw error;
     }
   }
 }
