@@ -218,7 +218,10 @@ export class SharedService {
     );
   }
 
-  private async createWallet(userId: string, walletAddress: string): Promise<SharedWallet> {
+  private async createWallet(
+    userId: string,
+    walletAddress: string,
+  ): Promise<SharedWallet> {
     const wallet = await this.walletRepository.findOne({
       where: {
         user_id: userId,

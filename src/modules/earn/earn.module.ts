@@ -9,6 +9,7 @@ import { ContractModule } from '../../common/helpers/contract/contract.module';
 import { SharedWallet } from '../shared/entities/wallet.entity';
 import { SharedUser } from '../shared/entities/user.entity';
 import { AnalyticModule } from '../../common/helpers/analytic/analytic.module';
+import { SharedCache } from '../shared/entities/cache.entity';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AnalyticModule } from '../../common/helpers/analytic/analytic.module';
       Transaction,
       SharedWallet,
       SharedUser,
+      SharedCache,
     ]),
     ContractModule,
     AnalyticModule,
