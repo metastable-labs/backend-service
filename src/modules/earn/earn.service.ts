@@ -25,6 +25,11 @@ import { SharedUser } from '../shared/entities/user.entity';
 import { PaginateDto } from './dtos/earn.dto';
 import { Token } from '../../common/enums/index.enum';
 import { AnalyticService } from '../../common/helpers/analytic/analytic.service';
+import { SharedCache } from '../shared/entities/cache.entity';
+import {
+  PROCESS_PENDING_BLANCE_CACHE_KEY,
+  PROCESS_PENDING_BLANCE_CACHE_TTL,
+} from './constants/earn.constant';
 
 const activitySlugToActivityType: Record<ActivitySlug, ActivityType> = {
   [ActivitySlug.REFERRAL]: ActivityType.REFERRAL,
@@ -48,6 +53,8 @@ export class EarnService {
     private readonly walletRepository: MongoRepository<SharedWallet>,
     @InjectRepository(SharedUser)
     private readonly sharedUserRepository: MongoRepository<SharedUser>,
+    @InjectRepository(SharedCache)
+    private readonly cacheRepository: MongoRepository<SharedCache>,
     private readonly contractService: ContractService,
     private readonly analyticService: AnalyticService,
   ) {}
@@ -257,7 +264,30 @@ export class EarnService {
         },
       });
 
+      const cache = await this.cacheRepository.findOne({
+        where: {
+          key: PROCESS_PENDING_BLANCE_CACHE_KEY,
+        },
+      });
+
+      if (cache) {
+        if (cache.expires > Date.now()) {
+          return successResponse({
+            status: true,
+            message: 'Pending balances processed successfully',
+          });
+        }
+      }
+
+      this.logger.log(
+        `Processing pending balances for ${wallets.length} wallets`,
+      );
+
       for (const wallet of wallets) {
+        this.logger.log(
+          `Processing pending balance for ${wallet.id} balance ${wallet.pending_balance}`,
+        );
+
         const pendingBalance = wallet.pending_balance;
 
         await this.contractService.recordPoints(
@@ -277,6 +307,25 @@ export class EarnService {
             },
           },
         );
+      }
+
+      if (cache) {
+        await this.cacheRepository.updateOne(
+          { id: cache.id },
+          {
+            $set: {
+              expires: Date.now() + PROCESS_PENDING_BLANCE_CACHE_TTL,
+            },
+          },
+        );
+      } else {
+        const newCache = this.cacheRepository.create({
+          id: uuidv4(),
+          key: PROCESS_PENDING_BLANCE_CACHE_KEY,
+          value: true,
+          expires: Date.now() + PROCESS_PENDING_BLANCE_CACHE_TTL,
+        });
+        await this.cacheRepository.save(newCache);
       }
 
       return successResponse({
