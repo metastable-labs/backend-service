@@ -105,13 +105,13 @@ export class EarnService {
       const { skip, take } = query;
       const transactionsCount = await this.transactionRepository.count({
         where: {
-          user_id: user.id,
+          wallet_id: user.wallet.id,
         },
       });
 
       const transactions = await this.transactionRepository.find({
         where: {
-          user_id: user.id,
+          wallet_id: user.wallet.id,
         },
         skip,
         take,
@@ -214,7 +214,7 @@ export class EarnService {
 
       const transaction = await this.transactionRepository.findOne({
         where: {
-          user_id: user.id,
+          wallet_id: user.wallet.id,
           activity_id: activity.id,
         },
       });
@@ -244,6 +244,54 @@ export class EarnService {
 
       throw new ServiceError(
         'Error claiming NFT earnings',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      ).toErrorResponse();
+    }
+  }
+
+  async processPendingBalances(): Promise<IResponse | ServiceError> {
+    try {
+      const wallets = await this.walletRepository.find({
+        where: {
+          pending_balance: { $gt: 0 },
+        },
+      });
+
+      for (const wallet of wallets) {
+        const pendingBalance = wallet.pending_balance;
+
+        await this.contractService.recordPoints(
+          wallet.wallet_address,
+          pendingBalance,
+          ActivityType.BRIDGING,
+        );
+
+        await this.walletRepository.updateOne(
+          { id: wallet.id },
+          {
+            $inc: {
+              total_balance: pendingBalance,
+            },
+            $set: {
+              pending_balance: 0,
+            },
+          },
+        );
+      }
+
+      return successResponse({
+        status: true,
+        message: 'Pending balances processed successfully',
+      });
+    } catch (error) {
+      this.logger.error('Error processing pending balances', error.stack);
+
+      if (error instanceof ServiceError) {
+        return error.toErrorResponse();
+      }
+
+      throw new ServiceError(
+        'Error processing pending balances',
         HttpStatus.INTERNAL_SERVER_ERROR,
       ).toErrorResponse();
     }

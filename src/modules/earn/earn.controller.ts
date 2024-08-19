@@ -17,6 +17,7 @@ import { SanitizerGuard } from '../../common/guards/sanitizer.guard';
 import { SharedAuthGuard } from '../../common/guards/shared.auth.guard';
 import { SharedAuthRequest } from '../../common/interfaces/request.interface';
 import { PaginateDto } from './dtos/earn.dto';
+import { AdminGuard } from '../../common/guards/admin.guard';
 
 @ApiTags('Earnings')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -97,5 +98,21 @@ export class EarnController {
   @Get('transactions')
   getTransactions(@Req() req: SharedAuthRequest, @Query() query: PaginateDto) {
     return this.earnService.getTransactions(req.user, query);
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'process pending balances',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'Error processing pending balances',
+    type: ErrorResponse,
+  })
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminGuard)
+  @Post('balances/process')
+  async processPendingBalances() {
+    return this.earnService.processPendingBalances();
   }
 }
