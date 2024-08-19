@@ -51,6 +51,10 @@ export const env = {
   },
   blockchain: {
     rpcUrl: envVar.get('BLOCKCHAIN_RPC_URL').required().asString(),
+    testnetRpcUrl: envVar
+      .get('BLOCKCHAIN_TESTNET_RPC_URL')
+      .required()
+      .asString(),
   },
   contract: {
     nftAddress: envVar.get('NFT_CONTRACT_ADDRESS').required().asString(),
