@@ -5,8 +5,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { env } from '../config/env';
 import { ServiceError } from '../errors/service.error';
-import { SharedUser } from '../../modules/shared/entities/user.entity';
-import { SharedWallet } from '../../modules/shared/entities/wallet.entity';
+import { User } from '../../modules/shared/entities/user.entity';
+import { Wallet } from '../../modules/shared/entities/wallet.entity';
 
 @Injectable()
 export class SharedAuthStrategy extends PassportStrategy(
@@ -14,10 +14,10 @@ export class SharedAuthStrategy extends PassportStrategy(
   'shared-auth',
 ) {
   constructor(
-    @InjectRepository(SharedUser)
-    private readonly sharedUserRepository: Repository<SharedUser>,
-    @InjectRepository(SharedWallet)
-    private readonly walletRepository: Repository<SharedWallet>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(Wallet)
+    private readonly walletRepository: Repository<Wallet>,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -26,9 +26,9 @@ export class SharedAuthStrategy extends PassportStrategy(
     });
   }
 
-  async validate(payload: { sub: string }): Promise<SharedUser> {
+  async validate(payload: { sub: string }): Promise<User> {
     try {
-      const user = await this.sharedUserRepository.findOne({
+      const user = await this.userRepository.findOne({
         where: {
           id: payload.sub,
         },
@@ -52,7 +52,8 @@ export class SharedAuthStrategy extends PassportStrategy(
         ...user,
         _id: undefined,
         reference: undefined,
-        payload: undefined,
+        metadata: undefined,
+        github_auth: undefined,
         wallet: {
           ...wallet,
           _id: undefined,

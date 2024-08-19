@@ -1,5 +1,4 @@
 import { Exclude } from 'class-transformer';
-import { LaunchboxApiCredential } from '../../launchbox/entities/launchbox.entity';
 import {
   Column,
   CreateDateColumn,
@@ -9,23 +8,27 @@ import {
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { User } from '@privy-io/server-auth';
-import { SharedWallet } from './wallet.entity';
+import { Wallet } from '../../shared/entities/wallet.entity';
+import { LaunchboxApiCredential } from '../../launchbox/entities/launchbox.entity';
+import { GithubAuth } from '../interfaces/shared.interface';
 
 @Entity({
-  name: 'shared_users',
+  name: 'users',
 })
-export class SharedUser {
-  @Exclude()
+export class User {
   @ObjectIdColumn({ select: false })
+  @Exclude()
   _id: ObjectId | undefined;
 
   @PrimaryColumn()
   id: string;
 
-  @Exclude()
   @Column()
   reference: string | undefined;
+
+  @Exclude()
+  @Column({ unique: true, select: false, nullable: true })
+  github_id: number;
 
   @Column()
   auth_id: string;
@@ -37,14 +40,30 @@ export class SharedUser {
   wallet_address: string;
 
   @Column()
-  is_active: boolean;
+  name: string;
+
+  @Column()
+  username: string;
+
+  @Column({ nullable: true })
+  avatar_url: string;
+
+  @Column()
+  ip_address: string;
 
   @Column()
   referral_code: string;
 
+  @Column()
+  is_active: boolean;
+
   @Exclude()
-  @Column({ type: 'jsonb' })
-  payload: User | undefined;
+  @Column({ select: false, nullable: true })
+  github_auth: GithubAuth | undefined;
+
+  @Exclude()
+  @Column({ select: false })
+  metadata: User | Record<string, any> | undefined;
 
   @CreateDateColumn()
   created_at: Date;
@@ -52,7 +71,7 @@ export class SharedUser {
   @UpdateDateColumn()
   updated_at: Date;
 
-  wallet: SharedWallet;
+  wallet: Wallet;
   externalApiCall?: boolean;
   apiCredential?: LaunchboxApiCredential;
 }

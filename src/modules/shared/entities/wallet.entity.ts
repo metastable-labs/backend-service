@@ -10,9 +10,9 @@ import {
 } from 'typeorm';
 
 @Entity({
-  name: 'shared_wallets',
+  name: 'wallets',
 })
-export class SharedWallet {
+export class Wallet {
   @Exclude()
   @ObjectIdColumn({ select: false })
   _id: ObjectId | undefined;

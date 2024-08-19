@@ -19,7 +19,7 @@ import { LaunchboxController } from './launchbox.controller';
 import { LaunchboxService } from './launchbox.service';
 import { AnalyticModule } from '../../common/helpers/analytic/analytic.module';
 import { ApiKeyStrategy } from '../../common/strategies/api-key.strategy';
-import { SharedUser } from '../shared/entities/user.entity';
+import { User } from '../shared/entities/user.entity';
 
 @Module({
   imports: [
@@ -32,7 +32,7 @@ import { SharedUser } from '../shared/entities/user.entity';
       IncentiveChannel,
       LeaderboardParticipant,
       TokenConfiguredAction,
-      SharedUser,
+      User,
       LaunchboxApiCredential,
     ]),
     CloudinaryModule,

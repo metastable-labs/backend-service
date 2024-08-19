@@ -10,7 +10,7 @@ import { ContractService } from '../../common/helpers/contract/contract.service'
 import { IResponse } from '../../common/interfaces/response.interface';
 import { successResponse } from '../../common/responses/success.helper';
 import { Activity } from './entities/activity.entity';
-import { SharedReferral } from '../shared/entities/referral.entity';
+import { Referral } from '../shared/entities/referral.entity';
 import { Transaction } from './entities/transaction.entity';
 import {
   ActivitySlug,
@@ -19,13 +19,13 @@ import {
   TransactionStatus,
   TransactionType,
 } from './enums/earn.enum';
-import { SharedWallet } from '../shared/entities/wallet.entity';
+import { Wallet } from '../shared/entities/wallet.entity';
 import { RecordActivityPoint, RecordPoint } from './interfaces/earn.interface';
-import { SharedUser } from '../shared/entities/user.entity';
+import { User } from '../shared/entities/user.entity';
 import { PaginateDto } from './dtos/earn.dto';
 import { Token } from '../../common/enums/index.enum';
 import { AnalyticService } from '../../common/helpers/analytic/analytic.service';
-import { SharedCache } from '../shared/entities/cache.entity';
+import { Cache } from '../shared/entities/cache.entity';
 import {
   PROCESS_PENDING_BLANCE_CACHE_KEY,
   PROCESS_PENDING_BLANCE_CACHE_TTL,
@@ -45,16 +45,16 @@ export class EarnService {
   constructor(
     @InjectRepository(Activity)
     private readonly activityRepository: MongoRepository<Activity>,
-    @InjectRepository(SharedReferral)
-    private readonly referralRepository: MongoRepository<SharedReferral>,
+    @InjectRepository(Referral)
+    private readonly referralRepository: MongoRepository<Referral>,
     @InjectRepository(Transaction)
     private readonly transactionRepository: MongoRepository<Transaction>,
-    @InjectRepository(SharedWallet)
-    private readonly walletRepository: MongoRepository<SharedWallet>,
-    @InjectRepository(SharedUser)
-    private readonly sharedUserRepository: MongoRepository<SharedUser>,
-    @InjectRepository(SharedCache)
-    private readonly cacheRepository: MongoRepository<SharedCache>,
+    @InjectRepository(Wallet)
+    private readonly walletRepository: MongoRepository<Wallet>,
+    @InjectRepository(User)
+    private readonly userRepository: MongoRepository<User>,
+    @InjectRepository(Cache)
+    private readonly cacheRepository: MongoRepository<Cache>,
     private readonly contractService: ContractService,
     private readonly analyticService: AnalyticService,
   ) {}
@@ -67,7 +67,7 @@ export class EarnService {
     await this.liquidityMigrationListener();
   }
 
-  async getEarnings(user: SharedUser): Promise<IResponse | ServiceError> {
+  async getEarnings(user: User): Promise<IResponse | ServiceError> {
     try {
       const numberOfReferrals = await this.referralRepository.find({
         where: {
@@ -105,7 +105,7 @@ export class EarnService {
   }
 
   async getTransactions(
-    user: SharedUser,
+    user: User,
     query: PaginateDto,
   ): Promise<IResponse | ServiceError> {
     try {
@@ -195,7 +195,7 @@ export class EarnService {
     }
   }
 
-  async claimNFTEarnings(user: SharedUser): Promise<IResponse | ServiceError> {
+  async claimNFTEarnings(user: User): Promise<IResponse | ServiceError> {
     try {
       const balance = await this.contractService.getNFTBalance(
         user.wallet_address,
@@ -794,7 +794,7 @@ export class EarnService {
   }
 
   async getUserByWalletAddress(walletAddress: string) {
-    const user = await this.sharedUserRepository.findOne({
+    const user = await this.userRepository.findOne({
       where: {
         wallet_address: walletAddress,
       },
@@ -821,7 +821,7 @@ export class EarnService {
   }
 
   async getUserById(id: string) {
-    const user = await this.sharedUserRepository.findOne({
+    const user = await this.userRepository.findOne({
       where: {
         id,
       },

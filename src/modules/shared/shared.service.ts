@@ -4,29 +4,31 @@ import { Repository } from 'typeorm';
 import { User } from '@privy-io/server-auth';
 import { JwtService } from '@nestjs/jwt';
 import { v4 as uuidv4 } from 'uuid';
-import { SharedUser } from './entities/user.entity';
+import { User as SharedUser } from './entities/user.entity';
 import { PrivyService } from '../../common/helpers/privy/privy.service';
 import { IResponse } from '../../common/interfaces/response.interface';
 import { ServiceError } from '../../common/errors/service.error';
 import { successResponse } from '../../common/responses/success.helper';
 import { generateCode } from '../../common/utils';
-import { SharedReferral } from './entities/referral.entity';
+import { Referral } from './entities/referral.entity';
 import { EarnService } from '../earn/earn.service';
 import { ActivitySlug } from '../earn/enums/earn.enum';
-import { SharedWallet } from './entities/wallet.entity';
+import { Wallet } from './entities/wallet.entity';
+import { GithubService } from '../../common/helpers/github/github.service';
 
 @Injectable()
 export class SharedService {
   constructor(
     @InjectRepository(SharedUser)
-    private readonly sharedUserRepository: Repository<SharedUser>,
-    @InjectRepository(SharedWallet)
-    private readonly walletRepository: Repository<SharedWallet>,
-    @InjectRepository(SharedReferral)
-    private readonly referralRepository: Repository<SharedReferral>,
+    private readonly userRepository: Repository<SharedUser>,
+    @InjectRepository(Wallet)
+    private readonly walletRepository: Repository<Wallet>,
+    @InjectRepository(Referral)
+    private readonly referralRepository: Repository<Referral>,
     private readonly privyService: PrivyService,
     private readonly jwtService: JwtService,
     private readonly earnService: EarnService,
+    private readonly githubService: GithubService,
   ) {}
 
   private readonly logger = new Logger(SharedService.name);
@@ -38,7 +40,7 @@ export class SharedService {
     try {
       let referrerUser: SharedUser | undefined;
       if (referralCode) {
-        const user = await this.sharedUserRepository.findOne({
+        const user = await this.userRepository.findOne({
           where: {
             referral_code: referralCode,
           },
@@ -70,7 +72,7 @@ export class SharedService {
         };
       }
 
-      const userExists = await this.sharedUserRepository.findOne({
+      const userExists = await this.userRepository.findOne({
         where: {
           reference: privyUserId,
         },
@@ -94,7 +96,7 @@ export class SharedService {
 
       const { identifier, type, walletAddress } = this.getAuthType(privyUser);
 
-      const newUser = this.sharedUserRepository.create({
+      const newUser = this.userRepository.create({
         id: uuidv4(),
         reference: privyUserId,
         auth_id: identifier,
@@ -102,10 +104,10 @@ export class SharedService {
         wallet_address: walletAddress,
         is_active: true,
         referral_code: generateCode(6).toUpperCase(),
-        payload: privyUser,
+        metadata: privyUser,
       });
 
-      await this.sharedUserRepository.save(newUser);
+      await this.userRepository.save(newUser);
       await this.createWallet(newUser.id, walletAddress);
 
       if (referrerUser) {
@@ -136,7 +138,11 @@ export class SharedService {
         },
       });
     } catch (error) {
-      this.logger.error('An error occurred while authenticating.', error.stack);
+      this.logger.error(
+        'An error occurred while authenticating.',
+        error.stack,
+        'authenticate',
+      );
 
       if (error instanceof ServiceError) {
         return error.toErrorResponse();
@@ -144,6 +150,73 @@ export class SharedService {
 
       throw new ServiceError(
         'An error occurred while authenticating.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      ).toErrorResponse();
+    }
+  }
+
+  async github(
+    user: SharedUser,
+    code: string,
+    ipAddress: string,
+  ): Promise<IResponse | ServiceError> {
+    try {
+      const githubUser = await this.githubService.getUserByAuthCode(code);
+
+      if (!githubUser.data || githubUser.status === false) {
+        throw new ServiceError(
+          'Invalid github authentication code',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const userExists = await this.userRepository.findOne({
+        where: {
+          id: user.id,
+          github_id: githubUser.data.id,
+        },
+      });
+
+      if (userExists) {
+        await this.userRepository.update(
+          { id: userExists.id },
+          {
+            github_auth: githubUser.auth,
+            ip_address: ipAddress,
+          },
+        );
+
+        return successResponse({
+          status: true,
+          message: 'Github authenticated successfully',
+          data: userExists,
+        });
+      }
+
+      await this.userRepository.update(
+        { id: user.id },
+        {
+          name: githubUser.data.name as string,
+          username: githubUser.data.login,
+          avatar_url: githubUser.data.avatar_url,
+          github_id: githubUser.data.id,
+          github_auth: githubUser.auth,
+          ip_address: ipAddress,
+          metadata: githubUser.data as Record<string, any>,
+        },
+      );
+
+      return successResponse({
+        status: true,
+        message: 'Github authenticated successfully',
+      });
+    } catch (error) {
+      if (error instanceof ServiceError) {
+        return error.toErrorResponse();
+      }
+
+      throw new ServiceError(
+        'Error occurred while trying to authenticate with Github',
         HttpStatus.INTERNAL_SERVER_ERROR,
       ).toErrorResponse();
     }
@@ -221,7 +294,7 @@ export class SharedService {
   private async createWallet(
     userId: string,
     walletAddress: string,
-  ): Promise<SharedWallet> {
+  ): Promise<Wallet> {
     const wallet = await this.walletRepository.findOne({
       where: {
         user_id: userId,

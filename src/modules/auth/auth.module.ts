@@ -5,7 +5,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { GithubModule } from '../../common/helpers/github/github.module';
 import { env } from '../../common/config/env';
-import { User } from '../user/entities/user.entity';
+import { User } from '../shared/entities/user.entity';
 
 @Module({
   imports: [

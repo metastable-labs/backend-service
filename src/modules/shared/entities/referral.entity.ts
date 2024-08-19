@@ -10,9 +10,9 @@ import {
 } from 'typeorm';
 
 @Entity({
-  name: 'shared_referrals',
+  name: 'referrals',
 })
-export class SharedReferral {
+export class Referral {
   @Exclude()
   @ObjectIdColumn({ select: false })
   _id: ObjectId;
