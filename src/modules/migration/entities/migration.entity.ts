@@ -52,6 +52,12 @@ export class Migration {
   @Column()
   status: Status;
 
+  @Column()
+  featured: boolean;
+
+  @Column()
+  is_custom: boolean;
+
   @Exclude()
   @Column({ select: false })
   metadata: Record<string, any>;

@@ -10,6 +10,7 @@ import { Wallet } from '../shared/entities/wallet.entity';
 import { User } from '../shared/entities/user.entity';
 import { AnalyticModule } from '../../common/helpers/analytic/analytic.module';
 import { Cache } from '../shared/entities/cache.entity';
+import { Migration } from '../migration/entities/migration.entity';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { Cache } from '../shared/entities/cache.entity';
       Wallet,
       User,
       Cache,
+      Migration,
     ]),
     ContractModule,
     AnalyticModule,

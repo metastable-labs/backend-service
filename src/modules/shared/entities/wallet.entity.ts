@@ -30,6 +30,9 @@ export class Wallet {
   pending_balance: number;
 
   @Column()
+  xpMigrate_earned: number;
+
+  @Column()
   is_active: boolean;
 
   @Column()

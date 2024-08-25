@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsNumber, IsOptional } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
 
 export class PaginateDto {
   @IsOptional()
@@ -13,4 +13,14 @@ export class PaginateDto {
   @Transform(({ value }) => parseInt(value.trim()))
   @IsNumber()
   skip = 0;
+}
+
+export class UpdateFeaturedDto {
+  @IsNotEmpty()
+  @IsBoolean()
+  featured: boolean;
+
+  @IsNotEmpty()
+  @IsBoolean()
+  is_custom: boolean;
 }

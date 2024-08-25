@@ -1,9 +1,12 @@
 import {
+  Body,
   ClassSerializerInterceptor,
   Controller,
   Get,
   HttpCode,
   HttpStatus,
+  Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -16,7 +19,7 @@ import { ErrorResponse } from '../../common/responses';
 import { SanitizerGuard } from '../../common/guards/sanitizer.guard';
 import { SharedAuthGuard } from '../../common/guards/shared.auth.guard';
 import { SharedAuthRequest } from '../../common/interfaces/request.interface';
-import { PaginateDto } from './dtos/earn.dto';
+import { PaginateDto, UpdateFeaturedDto } from './dtos/earn.dto';
 import { AdminGuard } from '../../common/guards/admin.guard';
 
 @ApiTags('Earnings')
@@ -52,6 +55,20 @@ export class EarnController {
   @Get('activities')
   getActivities() {
     return this.earnService.getActivities();
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Get featured tokens',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'Error getting featured tokens',
+    type: ErrorResponse,
+  })
+  @Get('featured_tokens')
+  getFeaturedTokens() {
+    return this.earnService.getFeaturedTokens();
   }
 
   @ApiResponse({
@@ -100,6 +117,8 @@ export class EarnController {
     return this.earnService.getTransactions(req.user, query);
   }
 
+  /** Admin Endpoints */
+
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'process pending balances',
@@ -114,5 +133,24 @@ export class EarnController {
   @Post('balances/process')
   async processPendingBalances() {
     return this.earnService.processPendingBalances();
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Update featured tokens',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'Error updating featured tokens',
+    type: ErrorResponse,
+  })
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminGuard)
+  @Patch('featured_tokens/:id')
+  async updateFeaturedTokens(
+    @Param('id') id: string,
+    @Body() body: UpdateFeaturedDto,
+  ) {
+    return this.earnService.updateFeaturedToken(id, body);
   }
 }

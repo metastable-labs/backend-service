@@ -159,6 +159,8 @@ export class MigrationService {
         user_id: user.id,
         chains: formatedBody.chains,
         status: Status.PENDING,
+        is_custom: false,
+        featured: false,
         metadata: {},
       });
 
