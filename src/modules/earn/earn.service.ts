@@ -22,7 +22,7 @@ import {
 import { Wallet } from '../shared/entities/wallet.entity';
 import { RecordActivityPoint, RecordPoint } from './interfaces/earn.interface';
 import { User } from '../shared/entities/user.entity';
-import { PaginateDto } from './dtos/earn.dto';
+import { PaginateDto, UpdateFeaturedDto } from './dtos/earn.dto';
 import { Token } from '../../common/enums/index.enum';
 import { AnalyticService } from '../../common/helpers/analytic/analytic.service';
 import { Cache } from '../shared/entities/cache.entity';
@@ -30,6 +30,7 @@ import {
   PROCESS_PENDING_BLANCE_CACHE_KEY,
   PROCESS_PENDING_BLANCE_CACHE_TTL,
 } from './constants/earn.constant';
+import { Migration } from '../migration/entities/migration.entity';
 
 const activitySlugToActivityType: Record<ActivitySlug, ActivityType> = {
   [ActivitySlug.REFERRAL]: ActivityType.REFERRAL,
@@ -55,6 +56,8 @@ export class EarnService {
     private readonly userRepository: MongoRepository<User>,
     @InjectRepository(Cache)
     private readonly cacheRepository: MongoRepository<Cache>,
+    @InjectRepository(Migration)
+    private readonly migrationRepository: MongoRepository<Migration>,
     private readonly contractService: ContractService,
     private readonly analyticService: AnalyticService,
   ) {}
@@ -190,6 +193,61 @@ export class EarnService {
 
       throw new ServiceError(
         'Error getting activities',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      ).toErrorResponse();
+    }
+  }
+
+  async getFeaturedTokens(): Promise<IResponse | ServiceError> {
+    try {
+      const featuredTokens = await this.migrationRepository.find({
+        where: {
+          featured: true,
+        },
+      });
+
+      return successResponse({
+        status: true,
+        message: 'Featured tokens fetched successfully',
+        data: featuredTokens,
+      });
+    } catch (error) {
+      if (error instanceof ServiceError) {
+        return error.toErrorResponse();
+      }
+
+      throw new ServiceError(
+        'Error getting featured tokens',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      ).toErrorResponse();
+    }
+  }
+
+  async updateFeaturedToken(id: string, body: UpdateFeaturedDto) {
+    try {
+      const migration = await this.migrationRepository.findOne({
+        where: {
+          id,
+        },
+      });
+
+      if (!migration) {
+        throw new ServiceError('Migration not found', HttpStatus.NOT_FOUND);
+      }
+
+      await this.migrationRepository.update({ id }, body);
+
+      return successResponse({
+        status: true,
+        message: 'Featured token updated successfully',
+      });
+    } catch (error) {
+      if (error instanceof ServiceError) {
+        return error.toErrorResponse();
+      }
+
+      throw new ServiceError(
+        'Error updating featured token',
         HttpStatus.INTERNAL_SERVER_ERROR,
       ).toErrorResponse();
     }
@@ -534,6 +592,7 @@ export class EarnService {
     points,
   }: RecordPoint) {
     try {
+      const xpMigrateEarned = BigNumber(points).div(100);
       await Promise.all([
         this.contractService.recordPoints(walletAddress, points, activityType),
         this.walletRepository.updateOne(
@@ -541,6 +600,7 @@ export class EarnService {
           {
             $inc: {
               total_balance: points,
+              xpMigrate_earned: xpMigrateEarned.toNumber(),
             },
           },
         ),
@@ -549,6 +609,7 @@ export class EarnService {
           wallet_id: walletId,
           activity_id: activityId,
           points,
+          xpMigrate: xpMigrateEarned.toNumber(),
           description: `${points} points earned for ${description}`,
           status: TransactionStatus.SUCCESS,
           type: TransactionType.EARN,
@@ -702,7 +763,7 @@ export class EarnService {
           'Users who follow Supermigrate twitter account will receive 250 Migrate Points.',
         is_percentage_based: false,
         percentage: 0,
-        is_active: true,
+        is_active: false,
         multipliers: [
           {
             id: uuidv4(),

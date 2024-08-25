@@ -308,6 +308,7 @@ export class SharedService {
         wallet_address: walletAddress,
         total_balance: 0,
         pending_balance: 0,
+        xpMigrate_earned: 0,
         is_active: true,
       });
 

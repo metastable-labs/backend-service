@@ -31,6 +31,9 @@ export class Transaction {
   points: number;
 
   @Column()
+  xpMigrate: number;
+
+  @Column()
   description: string;
 
   @Column()
