@@ -701,7 +701,11 @@ export class EarnService {
         } else {
           const authUser = await this.getUserByWalletAddress(user);
 
-          const points = amount0.mul(1000);
+          if (amount0.lt(10)) {
+            return;
+          }
+          const points = amount0.mul(10);
+
           await this.recordActivityPoints({
             userId: authUser.id,
             walletId: authUser.wallet.id,
@@ -719,139 +723,13 @@ export class EarnService {
     const amountInEth = ethers.utils.parseEther(amount.toString());
     const amountInUSD = amountInEth.mul(ethPriceUSD);
 
-    if (amountInUSD.lt(1)) {
+    if (amountInUSD.lt(10)) {
       return 0;
     }
 
-    const points = amountInUSD.mul(1000);
+    const points = amountInUSD.mul(10);
 
     return points.toNumber();
-  }
-
-  private async seedActivities() {
-    const activities = [
-      {
-        id: uuidv4(),
-        name: 'Referral',
-        slug: ActivitySlug.REFERRAL,
-        points: 250,
-        description:
-          'Users who refer their friends will get 10% of the points your referrals earn.',
-        is_percentage_based: true,
-        percentage: 10,
-        is_active: true,
-        multipliers: [],
-      },
-      {
-        id: uuidv4(),
-        name: 'The Great Migration NFT',
-        slug: ActivitySlug.NFT,
-        points: 500,
-        description:
-          'Users who mint The Great Migration NFT will receive 500 Migrate points',
-        is_percentage_based: false,
-        percentage: 0,
-        is_active: true,
-        multipliers: [],
-      },
-      {
-        id: uuidv4(),
-        name: 'Social Interaction',
-        slug: ActivitySlug.SOCIAL,
-        points: 250,
-        description:
-          'Users who follow Supermigrate twitter account will receive 250 Migrate Points.',
-        is_percentage_based: false,
-        percentage: 0,
-        is_active: false,
-        multipliers: [
-          {
-            id: uuidv4(),
-            slug: MultiplierSlug.VERIFIED_ACCOUNT,
-            description: '1x PTS multipliers for Verified account',
-            multiplier: 1,
-            is_active: true,
-            activity_slug: ActivitySlug.SOCIAL,
-          },
-          {
-            id: uuidv4(),
-            slug: MultiplierSlug.FOLLOWER,
-            description: '2x PTS multiplier for accounts above 2,000 followers',
-            multiplier: 2,
-            is_active: true,
-            activity_slug: ActivitySlug.SOCIAL,
-          },
-        ],
-      },
-      {
-        id: uuidv4(),
-        name: 'Bridge',
-        slug: ActivitySlug.BRIDGE,
-        points: 500,
-        description:
-          'All users on Supermigrate bridging through the bridge interface on supermigrate will earn  500 points for every $1 bridged.',
-        is_percentage_based: false,
-        percentage: 0,
-        is_active: true,
-        multipliers: [
-          {
-            id: uuidv4(),
-            slug: MultiplierSlug.FEATURED_TOKEN,
-            description: '1.5x Migrate PTS multipliers for featured tokens',
-            note: 'Bridging rewards will be earned retroactively and points will become available every 2 weeks after snapshots have been taken.',
-            multiplier: 1.5,
-            is_active: true,
-            activity_slug: ActivitySlug.BRIDGE,
-          },
-          {
-            id: uuidv4(),
-            slug: MultiplierSlug.SUPERMIGRATE_TOKEN,
-            description:
-              '3x Migrate PTS multiplier for tokens that migrated using Supermigrate',
-            note: 'Bridging rewards will be earned retroactively and points will become available every 2 weeks after snapshots have been taken.',
-            multiplier: 3,
-            is_active: true,
-            activity_slug: ActivitySlug.BRIDGE,
-          },
-        ],
-      },
-      {
-        id: uuidv4(),
-        name: 'Liquidity Migration',
-        slug: ActivitySlug.LIQUIDITY_MIGRATION,
-        points: 1000,
-        description:
-          'Users who migrate Liquidity will receive 1000 points for every $1 worth of Liquidity migrated ',
-        is_percentage_based: false,
-        percentage: 0,
-        is_active: true,
-        multipliers: [
-          {
-            id: uuidv4(),
-            slug: MultiplierSlug.STAKE_LP,
-            description:
-              '2.5x Migrate point multipliers for users who opt in to stake LP tokens.',
-            multiplier: 2.5,
-            is_active: true,
-            activity_slug: ActivitySlug.LIQUIDITY_MIGRATION,
-          },
-        ],
-      },
-    ];
-
-    const activityPromises = activities.map(async (activity) => {
-      const activityExist = await this.activityRepository.findOne({
-        where: {
-          slug: activity.slug,
-        },
-      });
-
-      if (!activityExist) {
-        await this.activityRepository.save(activity);
-      }
-    });
-
-    await Promise.all(activityPromises);
   }
 
   async getUserByWalletAddress(walletAddress: string) {
@@ -906,5 +784,131 @@ export class EarnService {
       ...user,
       wallet,
     };
+  }
+
+  private async seedActivities() {
+    const activities = [
+      {
+        id: uuidv4(),
+        name: 'Referral',
+        slug: ActivitySlug.REFERRAL,
+        points: 25,
+        description:
+          'Users who refer their friends will get 10% of the points your referrals earn.',
+        is_percentage_based: true,
+        percentage: 10,
+        is_active: true,
+        multipliers: [],
+      },
+      {
+        id: uuidv4(),
+        name: 'The Great Migration NFT',
+        slug: ActivitySlug.NFT,
+        points: 50,
+        description:
+          'Users who mint The Great Migration NFT will receive 500 Migrate points',
+        is_percentage_based: false,
+        percentage: 0,
+        is_active: true,
+        multipliers: [],
+      },
+      {
+        id: uuidv4(),
+        name: 'Social Interaction',
+        slug: ActivitySlug.SOCIAL,
+        points: 250,
+        description:
+          'Users who follow Supermigrate twitter account will receive 250 Migrate Points.',
+        is_percentage_based: false,
+        percentage: 0,
+        is_active: false,
+        multipliers: [
+          {
+            id: uuidv4(),
+            slug: MultiplierSlug.VERIFIED_ACCOUNT,
+            description: '1x PTS multipliers for Verified account',
+            multiplier: 1,
+            is_active: true,
+            activity_slug: ActivitySlug.SOCIAL,
+          },
+          {
+            id: uuidv4(),
+            slug: MultiplierSlug.FOLLOWER,
+            description: '2x PTS multiplier for accounts above 2,000 followers',
+            multiplier: 2,
+            is_active: true,
+            activity_slug: ActivitySlug.SOCIAL,
+          },
+        ],
+      },
+      {
+        id: uuidv4(),
+        name: 'Bridging',
+        slug: ActivitySlug.BRIDGE,
+        points: 5,
+        description:
+          'All users on Supermigrate bridging through the bridge interface on supermigrate will earn 5 points for every $10 bridged.',
+        is_percentage_based: false,
+        percentage: 0,
+        is_active: true,
+        multipliers: [
+          {
+            id: uuidv4(),
+            slug: MultiplierSlug.FEATURED_TOKEN,
+            description: '1.5x Migrate PTS multipliers for featured tokens',
+            note: 'Bridging rewards will be earned retroactively and points will become available every 2 weeks after snapshots have been taken.',
+            multiplier: 1.5,
+            is_active: true,
+            activity_slug: ActivitySlug.BRIDGE,
+          },
+          {
+            id: uuidv4(),
+            slug: MultiplierSlug.SUPERMIGRATE_TOKEN,
+            description:
+              '3x Migrate PTS multiplier for tokens that migrated using Supermigrate',
+            note: 'Bridging rewards will be earned retroactively and points will become available every 2 weeks after snapshots have been taken.',
+            multiplier: 3,
+            is_active: true,
+            activity_slug: ActivitySlug.BRIDGE,
+          },
+        ],
+      },
+      {
+        id: uuidv4(),
+        name: 'Liquidity Migration',
+        slug: ActivitySlug.LIQUIDITY_MIGRATION,
+        points: 10,
+        description:
+          'Users who migrate Liquidity will receive 10 points for every $10 worth of Liquidity migrated ',
+        is_percentage_based: false,
+        percentage: 0,
+        is_active: true,
+        multipliers: [
+          {
+            id: uuidv4(),
+            slug: MultiplierSlug.STAKE_LP,
+            description:
+              '2.5x Migrate point multipliers for users who opt in to stake LP tokens.',
+            multiplier: 2.5,
+            is_active: true,
+            activity_slug: ActivitySlug.LIQUIDITY_MIGRATION,
+          },
+        ],
+      },
+    ];
+
+    const activityPromises = activities.map(async (activity) => {
+      const activityExist = await this.activityRepository.findOne({
+        where: {
+          slug: activity.slug,
+        },
+      });
+
+      if (!activityExist) {
+        await this.activityRepository.save(activity);
+      }
+    });
+
+    await Promise.all(activityPromises);
   }
 }
