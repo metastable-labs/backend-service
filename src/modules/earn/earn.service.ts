@@ -81,6 +81,7 @@ export class EarnService {
       const referralPoints = await this.getTotalReferralPoints(user.wallet.id);
       const totalPoints = await this.getTotalPointsInCirculation();
       const userRank = await this.getUserRankByWalletId(user.wallet.id);
+      const isNFTPointsEarned = await this.isNFTPointsEarned(user.wallet.id);
 
       return successResponse({
         status: true,
@@ -91,6 +92,7 @@ export class EarnService {
             counts: numberOfReferrals.length,
             points: referralPoints,
           },
+          nft_points_earned: isNFTPointsEarned,
           rank: userRank,
           total_circulation_points: totalPoints,
         },
@@ -436,6 +438,31 @@ export class EarnService {
     const walletRank = wallets.find((w) => w.id === walletId);
 
     return walletRank?.rank || 0;
+  }
+
+  private async isNFTPointsEarned(walletId: string) {
+    const activity = await this.activityRepository.findOne({
+      where: {
+        slug: ActivitySlug.NFT,
+      },
+    });
+
+    if (!activity) {
+      return false;
+    }
+
+    const transaction = await this.transactionRepository.findOne({
+      where: {
+        wallet_id: walletId,
+        activity_id: activity.id,
+      },
+    });
+
+    if (transaction) {
+      return true;
+    }
+
+    return false;
   }
 
   private async getTotalReferralPoints(walletId: string) {
@@ -803,6 +830,8 @@ export class EarnService {
       {
         id: uuidv4(),
         name: 'The Great Migration NFT',
+        mint_url:
+          'https://zora.co/collect/base:0x08b2b3fe349534369343245b55d586adf2ea71a4/1',
         slug: ActivitySlug.NFT,
         points: 50,
         description:

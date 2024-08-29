@@ -34,6 +34,9 @@ export class Activity {
   @Column()
   points: number;
 
+  @Column()
+  mint_url: string;
+
   @Column({ default: false })
   is_percentage_based: boolean;
 
