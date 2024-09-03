@@ -27,7 +27,7 @@ export class User {
   reference: string | undefined;
 
   @Exclude()
-  @Column({ unique: true, select: false, nullable: true })
+  @Column({ select: false, nullable: true })
   github_id: number;
 
   @Column()
