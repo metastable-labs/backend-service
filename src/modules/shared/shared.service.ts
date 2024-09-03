@@ -95,6 +95,7 @@ export class SharedService {
       const privyUser = await this.privyService.clinet.getUser(privyUserId);
 
       const { identifier, type, walletAddress } = this.getAuthType(privyUser);
+      const randomNumber = Math.floor(Math.random() * 10000);
 
       const newUser = this.userRepository.create({
         id: uuidv4(),
@@ -103,6 +104,7 @@ export class SharedService {
         auth_type: type,
         wallet_address: walletAddress,
         is_active: true,
+        github_id: randomNumber,
         referral_code: generateCode(6).toUpperCase(),
         metadata: privyUser,
       });
@@ -211,6 +213,12 @@ export class SharedService {
         message: 'Github authenticated successfully',
       });
     } catch (error) {
+      this.logger.error(
+        'An error occurred while authenticating with Github.',
+        error.stack,
+        'github',
+      );
+
       if (error instanceof ServiceError) {
         return error.toErrorResponse();
       }
