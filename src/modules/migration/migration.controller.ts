@@ -16,18 +16,18 @@ import {
 } from '@nestjs/common';
 import { MigrationService } from './migration.service';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { AuthGuard } from '../../common/guards/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthRequest } from '../../common/interfaces/request.interface';
 import { env } from '../../common/config/env';
 import { CustomUploadFileTypeValidator } from '../../common/validators/file.validator';
 import { ChainDto, MigrateDto } from './dtos/migration.dto';
-import { ErrorResponse } from 'src/common/responses';
+import { ErrorResponse } from '../../common/responses';
 import { MigrationResponse, MigrationsResponse } from './responses/migration';
+import { SharedAuthGuard } from '../../common/guards/shared.auth.guard';
 
 @ApiTags('Migrations')
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(SharedAuthGuard)
 @UseInterceptors(ClassSerializerInterceptor)
 @Controller('migrations')
 export class MigrationController {
