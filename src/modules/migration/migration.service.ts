@@ -21,6 +21,8 @@ export class MigrationService {
   constructor(
     @InjectRepository(Migration)
     private readonly migrationRepository: MongoRepository<Migration>,
+    @InjectRepository(User)
+    private readonly userRepository: MongoRepository<User>,
     private readonly cloudinaryService: CloudinaryService,
     private readonly githubService: GithubService,
     private readonly httpService: HttpService,
@@ -202,15 +204,8 @@ export class MigrationService {
     body: ChainDto,
   ): Promise<IResponse | ServiceError> {
     try {
-      const migration = await this.migrationRepository.findOne({
-        where: {
-          id,
-        },
-      });
-
-      if (!migration) {
-        throw new ServiceError('Migration not found', HttpStatus.NOT_FOUND);
-      }
+      const users = await this.getUsersGithubId(user.github_id);
+      const migration = await this.getMigration(id, users);
 
       const isChainExist = migration.chains.find(
         (chain) =>
@@ -286,11 +281,8 @@ export class MigrationService {
     file: Express.Multer.File,
   ): Promise<IResponse | ServiceError> {
     try {
-      const migration = await this.migrationRepository.findOne({
-        where: {
-          id,
-        },
-      });
+      const users = await this.getUsersGithubId(user.github_id);
+      const migration = await this.getMigration(id, users);
 
       if (!migration) {
         throw new ServiceError('Migration not found', HttpStatus.NOT_FOUND);
@@ -369,15 +361,18 @@ export class MigrationService {
 
   async getAll(user: User): Promise<IResponse | ServiceError> {
     try {
+      const users = await this.getUsersGithubId(user.github_id);
       const migrations = await this.migrationRepository.find({
         where: {
-          user_id: user.id,
+          $or: users.map((user) => ({
+            user_id: user.id,
+          })),
         },
       });
 
       return successResponse({
         status: true,
-        message: 'Migrations fetched',
+        message: 'Migrations fetched successfully',
         data: migrations,
       });
     } catch (error) {
@@ -394,16 +389,8 @@ export class MigrationService {
 
   async getOne(user: User, id: string): Promise<IResponse | ServiceError> {
     try {
-      const migration = await this.migrationRepository.findOne({
-        where: {
-          id,
-          user_id: user.id,
-        },
-      });
-
-      if (!migration) {
-        throw new ServiceError('Migration not found', HttpStatus.NOT_FOUND);
-      }
+      const users = await this.getUsersGithubId(user.github_id);
+      const migration = await this.getMigration(id, users);
 
       const existPendingPullRequest = migration.pull_requests.some(
         (pullRequest) => pullRequest.status === PrStatus.OPEN,
@@ -561,5 +548,38 @@ export class MigrationService {
       );
       throw error;
     }
+  }
+
+  private async getMigration(id: string, users: User[]): Promise<Migration> {
+    const migration = await this.migrationRepository.findOne({
+      where: {
+        id,
+        $or: users.map((user) => ({
+          user_id: user.id,
+        })),
+      },
+    });
+
+    if (!migration) {
+      throw new ServiceError('Migration not found', HttpStatus.NOT_FOUND);
+    }
+
+    return migration;
+  }
+  private async getUsersGithubId(githubId: number): Promise<User[]> {
+    const users = await this.userRepository.find({
+      where: {
+        github_id: githubId,
+      },
+    });
+
+    if (!users.length) {
+      throw new ServiceError(
+        'User not found',
+        HttpStatus.NOT_FOUND,
+      ).toErrorResponse();
+    }
+
+    return users;
   }
 }
