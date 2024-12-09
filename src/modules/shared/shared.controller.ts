@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Query,
   Req,
   UseGuards,
   UseInterceptors,
@@ -91,5 +92,25 @@ export class SharedController {
   @Get('auth/session')
   async authSession(@Req() request: SharedAuthRequest) {
     return this.sharedService.authSession(request.user);
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Caddy Verify Domain',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Unauthorized request',
+    type: ErrorResponse,
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'An error occurred while authenticating the session',
+    type: ErrorResponse,
+  })
+  @HttpCode(HttpStatus.OK)
+  @Get('caddy/verify')
+  async verifyDomain(@Query() query: { domain: string }) {
+    return this.sharedService.verifyDomain(query.domain);
   }
 }
