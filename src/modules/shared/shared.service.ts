@@ -15,6 +15,7 @@ import { EarnService } from '../earn/earn.service';
 import { ActivitySlug } from '../earn/enums/earn.enum';
 import { Wallet } from './entities/wallet.entity';
 import { GithubService } from '../../common/helpers/github/github.service';
+import { env } from '../../common/config/env';
 
 @Injectable()
 export class SharedService {
@@ -249,6 +250,34 @@ export class SharedService {
 
       throw new ServiceError(
         'An error occurred while authenticating the session. Please try again later.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      ).toErrorResponse();
+    }
+  }
+
+  async verifyDomain(domain: string): Promise<IResponse | ServiceError> {
+    try {
+      if (env.app.url !== domain) {
+        throw new ServiceError('Access denied', HttpStatus.BAD_REQUEST);
+      }
+
+      return successResponse({
+        status: true,
+        message: 'Domain verified successfully',
+        data: domain,
+      });
+    } catch (error) {
+      this.logger.error(
+        'An error occurred while verifying the domain.',
+        error.stack,
+      );
+
+      if (error instanceof ServiceError) {
+        return error.toErrorResponse();
+      }
+
+      throw new ServiceError(
+        'An error occurred while verifying the domain.',
         HttpStatus.INTERNAL_SERVER_ERROR,
       ).toErrorResponse();
     }

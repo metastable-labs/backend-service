@@ -53,7 +53,6 @@ import {
 import { LaunchboxService } from './launchbox.service';
 import { AdminGuard } from '../../common/guards/admin.guard';
 
-
 @ApiTags('Launchbox')
 @UseInterceptors(ClassSerializerInterceptor)
 @Controller('launchbox')
